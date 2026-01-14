@@ -25,6 +25,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'arquitectura/estructura-jerarquica-productos',
+      label: 'Estructura Jerárquica de Productos',
+    },
+    {
+      type: 'doc',
       id: 'arquitectura/autenticacion-autorizacion',
       label: 'Autenticación y Autorización',
     },
@@ -74,6 +79,11 @@ const sidebars: SidebarsConfig = {
       type: 'doc',
       id: 'producto/intro',
       label: 'Introducción',
+    },
+    {
+      type: 'doc',
+      id: 'producto/creacion-producto',
+      label: 'Cómo Crear un Producto',
     },
     {
       type: 'doc',

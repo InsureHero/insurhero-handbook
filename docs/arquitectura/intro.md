@@ -42,3 +42,11 @@ Supabase PostgreSQL con:
 
 - **tRPC**: API tipada para el dashboard interno
 - **REST API**: Endpoints `/api/shield` para integraciones externas
+
+## Estructura de Datos
+
+### Estructura Jerárquica de Productos
+
+La arquitectura de datos de InsureHero se basa en una estructura jerárquica de cinco niveles: **Canal → Producto → Paquete → Variante → Cobertura**. Esta estructura permite una configuración flexible y granular de productos de seguros, con cada nivel definiendo aspectos específicos como precios, reglas de negocio, monedas y esquemas de datos.
+
+Para más detalles, consulta la [Estructura Jerárquica de Productos](./estructura-jerarquica-productos.md).

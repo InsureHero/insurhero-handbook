@@ -12,6 +12,14 @@ InsureHero es una plataforma integral para la gestión de seguros que permite:
 - Integración con múltiples canales
 - Dashboard administrativo completo
 
+## Crear tu Primer Producto
+
+Si eres nuevo en InsureHero, te recomendamos empezar con nuestra guía [Cómo Crear un Producto](./creacion-producto.md), que te explica paso a paso el proceso completo desde la cobertura hasta la emisión de una póliza, con ejemplos prácticos y lenguaje sencillo.
+
+## Estructura de Productos
+
+Para entender cómo se organizan los productos en InsureHero, consulta la [Estructura Jerárquica de Productos](../arquitectura/estructura-jerarquica-productos.md) en la sección de Arquitectura, que explica en detalle la relación entre Canales, Productos, Paquetes, Variantes y Coberturas, incluyendo cómo se configuran precios, reglas y monedas en cada nivel.
+
 ## Características Principales
 
 ### Gestión de Productos
