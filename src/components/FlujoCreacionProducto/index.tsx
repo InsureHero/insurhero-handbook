@@ -18,27 +18,29 @@ const FlujoCreacionProducto: React.FC = () => {
     zoomOut
   } = useZoomPan();
 
-  const viewBoxWidth = 1000;
-  const viewBoxHeight = 900;
+  const viewBoxWidth = 1400;
+  const viewBoxHeight = 1300;
 
+  // Organización por niveles verticales
   const pasos = [
     {
       id: 'Canal',
       numero: '0',
       titulo: 'CANAL',
       subtitulo: 'Configuración Base',
-      descripcion: 'Establece la moneda y país donde operarás',
+      descripcion: 'Establece moneda y país (inmutables)',
       icono: '🔵',
       color: '#01579b',
-      x: 500,
-      y: 80,
-      width: 200,
-      height: 100,
+      x: 590,
+      y: 50,
+      width: 220,
+      height: 200,
       detalles: [
-        'currency_id (uuid) - Inmutable',
-        'country_id (uuid) - Inmutable',
-        'api_key (uuid) - Auto-generado',
-        'status, email, phone_number'
+        'Define moneda de operación',
+        'Establece país de operación',
+        '⚠️ Moneda y país NO se pueden cambiar',
+        'Genera API key automáticamente',
+        'Configuración de contacto'
       ]
     },
     {
@@ -49,16 +51,16 @@ const FlujoCreacionProducto: React.FC = () => {
       descripcion: 'Define el tipo básico de seguro',
       icono: '🔴',
       color: '#880e4f',
-      x: 100,
-      y: 250,
-      width: 200,
-      height: 140,
+      x: 200,
+      y: 320,
+      width: 240,
+      height: 220,
       detalles: [
-        'name (text) - Requerido',
-        'insurer_coverage_number (text) - Requerido',
-        'type (text) - Opcional',
-        'insurer_id (uuid) - FK',
-        'uid (text) - Opcional'
+        'Tipo básico de seguro',
+        'Vinculada a una aseguradora',
+        'Número único del asegurador',
+        'Define categoría (Auto, Vida, etc.)',
+        'Base para crear variantes'
       ]
     },
     {
@@ -69,18 +71,17 @@ const FlujoCreacionProducto: React.FC = () => {
       descripcion: 'Crea versiones con precios y límites',
       icono: '🟢',
       color: '#1b5e20',
-      x: 400,
-      y: 250,
-      width: 200,
-      height: 180,
+      x: 960,
+      y: 320,
+      width: 240,
+      height: 240,
       detalles: [
-        'name (text) - Requerido',
-        'gross_price (text) - Expresión matemática',
-        'taxes (jsonb) - Array de impuestos',
-        'markup (jsonb) - Margen de ganancia',
-        'coverage_limits (numeric)',
-        'subject_schema (jsonb) - Requerido',
-        'claim_schema (jsonb) - Opcional'
+        'Versión específica de la cobertura',
+        'Precio dinámico (fórmulas matemáticas)',
+        'Impuestos configurables',
+        'Margen de ganancia',
+        'Límites de cobertura',
+        'Define datos requeridos del cliente'
       ]
     },
     {
@@ -91,16 +92,16 @@ const FlujoCreacionProducto: React.FC = () => {
       descripcion: 'Combina variantes en un "combo"',
       icono: '🟠',
       color: '#e65100',
-      x: 700,
-      y: 250,
-      width: 200,
-      height: 140,
+      x: 200,
+      y: 620,
+      width: 240,
+      height: 220,
       detalles: [
-        'name (text) - Requerido',
-        'pricing_rules (jsonb) - Reglas',
-        'uid (text) - Opcional',
-        'Relación N:M con variantes',
-        'Tabla: packages_variants'
+        'Agrupa múltiples variantes',
+        'Define reglas de facturación',
+        'Pago único o recurrente',
+        'Puede incluir varias coberturas',
+        'Combo de servicios'
       ]
     },
     {
@@ -111,17 +112,17 @@ const FlujoCreacionProducto: React.FC = () => {
       descripcion: 'Agrupa paquetes para vender',
       icono: '🟣',
       color: '#4a148c',
-      x: 400,
-      y: 500,
-      width: 200,
-      height: 140,
+      x: 960,
+      y: 620,
+      width: 240,
+      height: 240,
       detalles: [
-        'code (text) - Requerido, único',
-        'pricing (jsonb) - Configuración',
-        'features (jsonb) - Características',
-        'lifecycle (jsonb) - Estados',
-        'overrides (jsonb) - Modificaciones',
-        'Relación N:M con paquetes'
+        'Código único identificador',
+        'Agrupa múltiples paquetes',
+        'Características especiales',
+        'Estados del ciclo de vida',
+        'Configuraciones personalizadas',
+        'Listo para vender a clientes'
       ]
     },
     {
@@ -132,27 +133,27 @@ const FlujoCreacionProducto: React.FC = () => {
       descripcion: 'Emite póliza para un cliente',
       icono: '📄',
       color: '#4caf50',
-      x: 400,
-      y: 700,
-      width: 200,
-      height: 120,
+      x: 590,
+      y: 900,
+      width: 220,
+      height: 240,
       detalles: [
-        'policy_number (text) - Requerido, único',
-        'holder_id (uuid) - FK a users',
-        'product (jsonb) - Snapshot completo',
-        'subject_schema (jsonb) - Datos reales',
-        'total_gross_price (text) - Calculado',
-        'version (smallint) - Versión de póliza'
+        'Número único de póliza',
+        'Cliente titular del seguro',
+        'Snapshot del producto al momento',
+        'Datos reales del asegurado',
+        'Precio total calculado',
+        'Versión del contrato'
       ]
     }
   ];
 
   const flechas = [
-    { desde: 'Canal', hasta: 'Coverage', label: 'requiere', estilo: 'dashed' },
-    { desde: 'Coverage', hasta: 'Variant', label: '1:N' },
-    { desde: 'Variant', hasta: 'Package', label: 'N:M' },
-    { desde: 'Package', hasta: 'Product', label: 'N:M' },
-    { desde: 'Product', hasta: 'Policy', label: '1:N' }
+    { desde: 'Canal', hasta: 'Coverage', label: 'requiere', estilo: 'dashed', vertical: true },
+    { desde: 'Coverage', hasta: 'Variant', label: '1:N', estilo: 'solid', vertical: false },
+    { desde: 'Variant', hasta: 'Package', label: 'N:M', estilo: 'solid', vertical: true },
+    { desde: 'Package', hasta: 'Product', label: 'N:M', estilo: 'solid', vertical: false },
+    { desde: 'Product', hasta: 'Policy', label: '1:N', estilo: 'solid', vertical: true }
   ];
 
   const obtenerPaso = (id: string) => pasos.find(p => p.id === id)!;
@@ -189,56 +190,111 @@ const FlujoCreacionProducto: React.FC = () => {
           <defs>
             <marker
               id="arrowhead-creation"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
               refY="3"
               orient="auto"
             >
-              <polygon points="0 0, 10 3, 0 6" fill="#333" />
+              <polygon points="0 0, 12 3, 0 6" fill="#01579b" />
             </marker>
+            <linearGradient id="flowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#01579b" stopOpacity="0.05" />
+              <stop offset="50%" stopColor="#4a148c" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="#4caf50" stopOpacity="0.05" />
+            </linearGradient>
           </defs>
 
-          {/* Fondo */}
-          <rect width={viewBoxWidth} height={viewBoxHeight} fill="#f8f9fa" />
+          {/* Fondo con gradiente de flujo */}
+          <rect width={viewBoxWidth} height={viewBoxHeight} fill="url(#flowGradient)" />
 
           {/* Título */}
           <text
             x={viewBoxWidth / 2}
             y="30"
             textAnchor="middle"
-            fontSize="22"
+            fontSize="24"
             fontWeight="bold"
             fill="#333"
           >
             Proceso de Creación: De la Cobertura a la Póliza
+          </text>
+          <text
+            x={viewBoxWidth / 2}
+            y="50"
+            textAnchor="middle"
+            fontSize="14"
+            fill="#666"
+          >
+            Sigue el flujo de arriba hacia abajo → Orden secuencial de creación
           </text>
 
           {/* Flechas */}
           {flechas.map((flecha, index) => {
             const desde = obtenerPaso(flecha.desde);
             const hasta = obtenerPaso(flecha.hasta);
+            
+            let startX, startY, endX, endY;
+            
+            if (flecha.vertical) {
+              // Flecha vertical
+              startX = desde.x + desde.width / 2;
+              startY = desde.y + desde.height;
+              endX = hasta.x + hasta.width / 2;
+              endY = hasta.y;
+            } else {
+              // Flecha horizontal
+              startX = desde.x + desde.width;
+              startY = desde.y + desde.height / 2;
+              endX = hasta.x;
+              endY = hasta.y + hasta.height / 2;
+            }
+            
             return (
               <g key={index}>
+                {/* Sombra de la flecha */}
                 <line
-                  x1={desde.x + desde.width / 2}
-                  y1={desde.y + desde.height}
-                  x2={hasta.x + hasta.width / 2}
-                  y2={hasta.y}
-                  stroke="#333"
-                  strokeWidth="2"
+                  x1={startX + 2}
+                  y1={startY + 2}
+                  x2={endX + 2}
+                  y2={endY + 2}
+                  stroke="#000"
+                  strokeWidth="4"
                   markerEnd="url(#arrowhead-creation)"
-                  strokeDasharray={flecha.estilo === 'dashed' ? '5,5' : '0'}
-                  opacity="0.6"
+                  strokeDasharray={flecha.estilo === 'dashed' ? '8,4' : '0'}
+                  opacity="0.1"
+                />
+                {/* Flecha principal */}
+                <line
+                  x1={startX}
+                  y1={startY}
+                  x2={endX}
+                  y2={endY}
+                  stroke={flecha.estilo === 'dashed' ? '#01579b' : '#4caf50'}
+                  strokeWidth="3"
+                  markerEnd="url(#arrowhead-creation)"
+                  strokeDasharray={flecha.estilo === 'dashed' ? '8,4' : '0'}
+                  opacity="0.8"
+                />
+                {/* Etiqueta de relación */}
+                <rect
+                  x={flecha.vertical ? (startX + endX) / 2 - 20 : (startX + endX) / 2 - 20}
+                  y={flecha.vertical ? (startY + endY) / 2 - 10 : startY - 15}
+                  width="40"
+                  height="20"
+                  rx="4"
+                  fill="#fff"
+                  stroke={flecha.estilo === 'dashed' ? '#01579b' : '#4caf50'}
+                  strokeWidth="1"
+                  opacity="0.9"
                 />
                 <text
-                  x={(desde.x + hasta.x) / 2 + desde.width / 4}
-                  y={(desde.y + hasta.y) / 2 + desde.height / 2}
+                  x={(startX + endX) / 2}
+                  y={flecha.vertical ? (startY + endY) / 2 + 5 : startY}
                   textAnchor="middle"
-                  fontSize="10"
-                  fill="#666"
+                  fontSize="11"
+                  fill={flecha.estilo === 'dashed' ? '#01579b' : '#4caf50'}
                   fontWeight="bold"
-                  className={containerStyles.labelRelacion}
                 >
                   {flecha.label}
                 </text>
@@ -249,6 +305,17 @@ const FlujoCreacionProducto: React.FC = () => {
           {/* Pasos */}
           {pasos.map((paso) => (
             <g key={paso.id}>
+              {/* Sombra del rectángulo */}
+              <rect
+                x={paso.x + 4}
+                y={paso.y + 4}
+                width={paso.width}
+                height={paso.height}
+                rx="12"
+                fill="#000"
+                opacity="0.1"
+              />
+              
               {/* Rectángulo principal */}
               <rect
                 x={paso.x}
@@ -257,24 +324,34 @@ const FlujoCreacionProducto: React.FC = () => {
                 height={paso.height}
                 rx="12"
                 fill={paso.color}
-                stroke="#333"
-                strokeWidth="2"
+                stroke="#fff"
+                strokeWidth="3"
               />
               
-              {/* Número del paso */}
+              {/* Borde destacado superior */}
+              <rect
+                x={paso.x}
+                y={paso.y}
+                width={paso.width}
+                height="50"
+                rx="12"
+                fill="rgba(255,255,255,0.2)"
+              />
+              
+              {/* Número del paso en círculo destacado */}
               <circle
-                cx={paso.x + 30}
-                cy={paso.y + 30}
-                r="20"
+                cx={paso.x + 40}
+                cy={paso.y + 40}
+                r="25"
                 fill="#fff"
-                stroke="#333"
-                strokeWidth="2"
+                stroke={paso.color}
+                strokeWidth="3"
               />
               <text
-                x={paso.x + 30}
-                y={paso.y + 35}
+                x={paso.x + 40}
+                y={paso.y + 48}
                 textAnchor="middle"
-                fontSize="16"
+                fontSize="20"
                 fontWeight="bold"
                 fill={paso.color}
               >
@@ -286,7 +363,7 @@ const FlujoCreacionProducto: React.FC = () => {
                 x={paso.x + paso.width / 2}
                 y={paso.y + 35}
                 textAnchor="middle"
-                fontSize="14"
+                fontSize="15"
                 fontWeight="bold"
                 fill="#fff"
               >
@@ -300,7 +377,7 @@ const FlujoCreacionProducto: React.FC = () => {
                 textAnchor="middle"
                 fontSize="11"
                 fill="#fff"
-                opacity="0.9"
+                opacity="0.95"
               >
                 {paso.subtitulo}
               </text>
@@ -312,68 +389,56 @@ const FlujoCreacionProducto: React.FC = () => {
                 textAnchor="middle"
                 fontSize="10"
                 fill="#fff"
-                opacity="0.8"
+                opacity="0.85"
               >
                 {paso.descripcion}
               </text>
 
               {/* Detalles */}
-              {paso.detalles.map((detalle, idx) => (
-                <text
-                  key={idx}
-                  x={paso.x + 10}
-                  y={paso.y + 95 + idx * 15}
-                  fontSize="9"
-                  fill="#fff"
-                  opacity="0.85"
-                >
-                  • {detalle}
-                </text>
-              ))}
+              <g>
+                <line
+                  x1={paso.x + 15}
+                  y1={paso.y + 85}
+                  x2={paso.x + paso.width - 15}
+                  y2={paso.y + 85}
+                  stroke="#fff"
+                  strokeWidth="1"
+                  opacity="0.3"
+                />
+                {paso.detalles.flatMap((detalle, idx) => {
+                  // Dividir texto largo en múltiples líneas si es necesario
+                  const maxLength = 30;
+                  const lines = detalle.length > maxLength 
+                    ? [detalle.substring(0, maxLength), detalle.substring(maxLength)]
+                    : [detalle];
+                  
+                  return lines.map((line, lineIdx) => {
+                    // Calcular posición Y considerando todas las líneas anteriores
+                    let yOffset = 105;
+                    for (let i = 0; i < idx; i++) {
+                      const prevDetalle = paso.detalles[i];
+                      const prevLines = prevDetalle.length > maxLength ? 2 : 1;
+                      yOffset += prevLines * 16;
+                    }
+                    yOffset += lineIdx * 14;
+                    
+                    return (
+                      <text
+                        key={`${idx}-${lineIdx}`}
+                        x={paso.x + 12}
+                        y={paso.y + yOffset}
+                        fontSize="9"
+                        fill="#fff"
+                        opacity="0.9"
+                      >
+                        {lineIdx === 0 ? '• ' : '  '}{line}
+                      </text>
+                    );
+                  });
+                })}
+              </g>
             </g>
           ))}
-
-          {/* Leyenda de orden */}
-          <g>
-            <rect
-              x={50}
-              y={viewBoxHeight - 120}
-              width={viewBoxWidth - 100}
-              height="100"
-              rx="8"
-              fill="#fff"
-              stroke="#ddd"
-              strokeWidth="1"
-            />
-            <text
-              x={viewBoxWidth / 2}
-              y={viewBoxHeight - 95}
-              textAnchor="middle"
-              fontSize="16"
-              fontWeight="bold"
-              fill="#333"
-            >
-              Orden de Creación
-            </text>
-            <text x={100} y={viewBoxHeight - 70} fontSize="12" fill="#666">
-              <tspan fontWeight="bold">0. Canal:</tspan> Configuración inicial (moneda, país)
-            </text>
-            <text x={100} y={viewBoxHeight - 50} fontSize="12" fill="#666">
-              <tspan fontWeight="bold">1. Cobertura:</tspan> Define el tipo básico de seguro
-            </text>
-            <text x={100} y={viewBoxHeight - 30} fontSize="12" fill="#666">
-              <tspan fontWeight="bold">2. Variante:</tspan> Define precios, límites y condiciones
-            </text>
-            <text x={550} y={viewBoxHeight - 70} fontSize="12" fill="#666">
-              <tspan fontWeight="bold">3. Paquete:</tspan> Agrupa variantes en un "combo"
-            </text>
-            <text x={550} y={viewBoxHeight - 50} fontSize="12" fill="#666">
-              <tspan fontWeight="bold">4. Producto:</tspan> Agrupa paquetes, listo para vender
-            </text>
-            <text x={550} y={viewBoxHeight - 30} fontSize="12" fill="#666">
-              <tspan fontWeight="bold">5. Póliza:</tspan> Contrato individual para un cliente
-            </text>
-          </g>
         </svg>
       </div>
     </div>

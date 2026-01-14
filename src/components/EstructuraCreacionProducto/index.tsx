@@ -19,20 +19,21 @@ const EstructuraCreacionProducto: React.FC = () => {
   } = useZoomPan();
 
   const viewBoxWidth = 1400;
-  const viewBoxHeight = 1000;
+  const viewBoxHeight = 1300;
 
+  // Organización por niveles verticales
   const niveles = [
     {
       id: 'Canal',
       titulo: 'CANAL',
       icono: '🔵',
       color: '#01579b',
-      x: 600,
+      x: 590,
       y: 50,
-      width: 200,
-      height: 80,
+      width: 220,
+      height: 150,
       descripcion: 'Configuración Base',
-      campos: ['currency_id (uuid)', 'country_id (uuid)', 'api_key (uuid)', 'status (text)']
+      campos: ['Moneda de operación', 'País de operación', 'API Key automática', 'Estado del canal']
     },
     {
       id: 'Coverage',
@@ -40,68 +41,68 @@ const EstructuraCreacionProducto: React.FC = () => {
       icono: '🔴',
       color: '#880e4f',
       x: 200,
-      y: 200,
-      width: 250,
-      height: 120,
+      y: 280,
+      width: 280,
+      height: 180,
       descripcion: 'Tipo básico de seguro',
-      campos: ['name (text)', 'insurer_coverage_number (text)', 'type (text)', 'uid (text)']
+      campos: ['Tipo básico de seguro', 'Número del asegurador', 'Categoría (Auto, Vida, etc.)', 'Vinculada a aseguradora', 'Identificador externo']
     },
     {
       id: 'Variant',
       titulo: 'VARIANTE',
       icono: '🟢',
       color: '#1b5e20',
-      x: 550,
-      y: 200,
-      width: 300,
-      height: 180,
+      x: 920,
+      y: 280,
+      width: 280,
+      height: 220,
       descripcion: 'Versión con precios y límites',
-      campos: ['gross_price (text)', 'taxes (jsonb)', 'markup (jsonb)', 'subject_schema (jsonb)', 'coverage_limits (numeric)']
+      campos: ['Precio dinámico (fórmulas)', 'Impuestos configurables', 'Margen de ganancia', 'Datos requeridos del cliente', 'Límites de cobertura', 'Datos para reclamos']
     },
     {
       id: 'Package',
       titulo: 'PAQUETE',
       icono: '🟠',
       color: '#e65100',
-      x: 950,
-      y: 200,
-      width: 250,
-      height: 120,
+      x: 200,
+      y: 540,
+      width: 280,
+      height: 180,
       descripcion: 'Agrupa variantes',
-      campos: ['name (text)', 'pricing_rules (jsonb)', 'uid (text)', 'N:M con variantes']
+      campos: ['Agrupa múltiples variantes', 'Reglas de facturación', 'Pago único o recurrente', 'Puede incluir varias coberturas', 'Combo de servicios']
     },
     {
       id: 'Product',
       titulo: 'PRODUCTO',
       icono: '🟣',
       color: '#4a148c',
-      x: 400,
-      y: 450,
-      width: 300,
-      height: 120,
+      x: 920,
+      y: 540,
+      width: 280,
+      height: 200,
       descripcion: 'Listo para vender',
-      campos: ['code (text)', 'pricing (jsonb)', 'features (jsonb)', 'lifecycle (jsonb)', 'N:M con paquetes']
+      campos: ['Código único identificador', 'Agrupa múltiples paquetes', 'Características especiales', 'Estados del ciclo de vida', 'Configuraciones personalizadas', 'Listo para vender']
     },
     {
       id: 'Policy',
       titulo: 'PÓLIZA',
       icono: '📄',
       color: '#4caf50',
-      x: 400,
-      y: 650,
-      width: 300,
-      height: 100,
-      descripcion: 'Contrato individual',
-      campos: ['policy_number (text)', 'holder_id (uuid)', 'product (jsonb snapshot)', 'total_gross_price (text)']
+      x: 200,
+      y: 780,
+      width: 1000,
+      height: 200,
+      descripcion: 'Contrato individual - Se crea cuando un cliente compra',
+      campos: ['Número único de póliza', 'Cliente titular del seguro', 'Snapshot del producto', 'Precio total calculado', 'Datos reales del asegurado', 'Versión del contrato']
     }
   ];
 
   const relaciones = [
-    { desde: 'Canal', hasta: 'Coverage', label: 'requiere', estilo: 'dashed' },
-    { desde: 'Coverage', hasta: 'Variant', label: '1:N', tipo: 'directa' },
-    { desde: 'Variant', hasta: 'Package', label: 'N:M', tipo: 'directa' },
-    { desde: 'Package', hasta: 'Product', label: 'N:M', tipo: 'directa' },
-    { desde: 'Product', hasta: 'Policy', label: '1:N', tipo: 'directa' }
+    { desde: 'Canal', hasta: 'Coverage', label: 'requiere', estilo: 'dashed', vertical: true },
+    { desde: 'Coverage', hasta: 'Variant', label: '1:N', tipo: 'directa', vertical: false },
+    { desde: 'Variant', hasta: 'Package', label: 'N:M', tipo: 'directa', vertical: true },
+    { desde: 'Package', hasta: 'Product', label: 'N:M', tipo: 'directa', vertical: false },
+    { desde: 'Product', hasta: 'Policy', label: '1:N', tipo: 'directa', vertical: true }
   ];
 
   const obtenerNivel = (id: string) => niveles.find(n => n.id === id)!;
@@ -138,65 +139,111 @@ const EstructuraCreacionProducto: React.FC = () => {
           <defs>
             <marker
               id="arrowhead-structure"
-              markerWidth="10"
-              markerHeight="10"
-              refX="9"
+              markerWidth="12"
+              markerHeight="12"
+              refX="10"
               refY="3"
               orient="auto"
             >
-              <polygon points="0 0, 10 3, 0 6" fill="#666" />
+              <polygon points="0 0, 12 3, 0 6" fill="#01579b" />
             </marker>
+            <linearGradient id="structureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#01579b" stopOpacity="0.05" />
+              <stop offset="50%" stopColor="#4a148c" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="#4caf50" stopOpacity="0.05" />
+            </linearGradient>
           </defs>
 
-          {/* Fondo */}
-          <rect width={viewBoxWidth} height={viewBoxHeight} fill="#f8f9fa" />
+          {/* Fondo con gradiente */}
+          <rect width={viewBoxWidth} height={viewBoxHeight} fill="url(#structureGradient)" />
 
           {/* Título */}
           <text
             x={viewBoxWidth / 2}
-            y="30"
+            y="35"
             textAnchor="middle"
-            fontSize="22"
+            fontSize="24"
             fontWeight="bold"
             fill="#333"
           >
             Estructura Completa de Creación de Productos
+          </text>
+          <text
+            x={viewBoxWidth / 2}
+            y="55"
+            textAnchor="middle"
+            fontSize="14"
+            fill="#666"
+          >
+            Sigue el flujo de arriba hacia abajo → Niveles de configuración
           </text>
 
           {/* Relaciones */}
           {relaciones.map((rel, index) => {
             const desde = obtenerNivel(rel.desde);
             const hasta = obtenerNivel(rel.hasta);
-            const centroDesde = {
-              x: desde.x + desde.width / 2,
-              y: desde.y + desde.height
-            };
-            const centroHasta = {
-              x: hasta.x + hasta.width / 2,
-              y: hasta.y
-            };
+            
+            let startX, startY, endX, endY;
+            
+            if (rel.vertical) {
+              // Flecha vertical
+              startX = desde.x + desde.width / 2;
+              startY = desde.y + desde.height;
+              endX = hasta.x + hasta.width / 2;
+              endY = hasta.y;
+            } else {
+              // Flecha horizontal
+              startX = desde.x + desde.width;
+              startY = desde.y + desde.height / 2;
+              endX = hasta.x;
+              endY = hasta.y + hasta.height / 2;
+            }
             
             return (
               <g key={index}>
+                {/* Sombra */}
                 <line
-                  x1={centroDesde.x}
-                  y1={centroDesde.y}
-                  x2={centroHasta.x}
-                  y2={centroHasta.y}
-                  stroke="#666"
-                  strokeWidth="2"
+                  x1={startX + 2}
+                  y1={startY + 2}
+                  x2={endX + 2}
+                  y2={endY + 2}
+                  stroke="#000"
+                  strokeWidth="4"
                   markerEnd="url(#arrowhead-structure)"
-                  strokeDasharray={rel.estilo === 'dashed' ? '5,5' : '0'}
-                  opacity="0.6"
+                  strokeDasharray={rel.estilo === 'dashed' ? '10,5' : '0'}
+                  opacity="0.1"
+                />
+                {/* Flecha principal */}
+                <line
+                  x1={startX}
+                  y1={startY}
+                  x2={endX}
+                  y2={endY}
+                  stroke={rel.estilo === 'dashed' ? '#01579b' : '#4caf50'}
+                  strokeWidth="4"
+                  markerEnd="url(#arrowhead-structure)"
+                  strokeDasharray={rel.estilo === 'dashed' ? '10,5' : '0'}
+                  opacity="0.8"
+                />
+                {/* Etiqueta */}
+                <rect
+                  x={rel.vertical ? (startX + endX) / 2 - 25 : (startX + endX) / 2 - 25}
+                  y={rel.vertical ? (startY + endY) / 2 - 10 : startY - 15}
+                  width="50"
+                  height="20"
+                  rx="4"
+                  fill="#fff"
+                  stroke={rel.estilo === 'dashed' ? '#01579b' : '#4caf50'}
+                  strokeWidth="1"
+                  opacity="0.9"
                 />
                 <text
-                  x={(centroDesde.x + centroHasta.x) / 2}
-                  y={(centroDesde.y + centroHasta.y) / 2}
+                  x={(startX + endX) / 2}
+                  y={rel.vertical ? (startY + endY) / 2 + 5 : startY}
                   textAnchor="middle"
-                  fontSize="10"
-                  fill="#666"
+                  fontSize="11"
+                  fill={rel.estilo === 'dashed' ? '#01579b' : '#4caf50'}
                   fontWeight="bold"
-                  className={containerStyles.labelRelacion}
                 >
                   {rel.label}
                 </text>
@@ -205,8 +252,20 @@ const EstructuraCreacionProducto: React.FC = () => {
           })}
 
           {/* Niveles */}
-          {niveles.map((nivel) => (
+          {niveles.map((nivel, index) => (
             <g key={nivel.id}>
+              {/* Sombra */}
+              <rect
+                x={nivel.x + 5}
+                y={nivel.y + 5}
+                width={nivel.width}
+                height={nivel.height}
+                rx="12"
+                fill="#000"
+                opacity="0.1"
+              />
+              
+              {/* Rectángulo principal */}
               <rect
                 x={nivel.x}
                 y={nivel.y}
@@ -214,22 +273,48 @@ const EstructuraCreacionProducto: React.FC = () => {
                 height={nivel.height}
                 rx="12"
                 fill={nivel.color}
-                stroke="#333"
-                strokeWidth="2"
+                stroke="#fff"
+                strokeWidth="3"
               />
               
-              {/* Título */}
+              {/* Encabezado destacado */}
               <rect
                 x={nivel.x}
                 y={nivel.y}
                 width={nivel.width}
-                height="40"
+                height="50"
                 rx="12"
-                fill="rgba(0,0,0,0.2)"
+                fill="rgba(255,255,255,0.25)"
               />
+              
+              {/* Número de orden (solo para los primeros 5) */}
+              {index < 5 && (
+                <circle
+                  cx={nivel.x + 35}
+                  cy={nivel.y + 35}
+                  r="18"
+                  fill="#fff"
+                  stroke={nivel.color}
+                  strokeWidth="2"
+                />
+              )}
+              {index < 5 && (
+                <text
+                  x={nivel.x + 35}
+                  y={nivel.y + 40}
+                  textAnchor="middle"
+                  fontSize="14"
+                  fontWeight="bold"
+                  fill={nivel.color}
+                >
+                  {index}
+                </text>
+              )}
+              
+              {/* Título */}
               <text
                 x={nivel.x + nivel.width / 2}
-                y={nivel.y + 28}
+                y={nivel.y + 32}
                 textAnchor="middle"
                 fontSize="16"
                 fontWeight="bold"
@@ -241,70 +326,109 @@ const EstructuraCreacionProducto: React.FC = () => {
               {/* Descripción */}
               <text
                 x={nivel.x + nivel.width / 2}
-                y={nivel.y + 60}
+                y={nivel.y + 70}
                 textAnchor="middle"
                 fontSize="11"
                 fill="#fff"
-                opacity="0.9"
+                opacity="0.95"
               >
                 {nivel.descripcion}
               </text>
               
+              {/* Separador */}
+              <line
+                x1={nivel.x + 15}
+                y1={nivel.y + 80}
+                x2={nivel.x + nivel.width - 15}
+                y2={nivel.y + 80}
+                stroke="#fff"
+                strokeWidth="1"
+                opacity="0.3"
+              />
+              
               {/* Campos */}
-              {nivel.campos.map((campo, idx) => (
-                <text
-                  key={idx}
-                  x={nivel.x + 10}
-                  y={nivel.y + 80 + idx * 18}
-                  fontSize="10"
-                  fill="#fff"
-                  opacity="0.85"
-                >
-                  • {campo}
-                </text>
-              ))}
+              {nivel.campos.flatMap((campo, idx) => {
+                // Dividir texto largo en múltiples líneas si es necesario
+                const maxLength = 38;
+                const lines = campo.length > maxLength 
+                  ? [campo.substring(0, maxLength), campo.substring(maxLength)]
+                  : [campo];
+                
+                return lines.map((line, lineIdx) => {
+                  // Calcular posición Y considerando todas las líneas anteriores
+                  let yOffset = 100;
+                  for (let i = 0; i < idx; i++) {
+                    const prevCampo = nivel.campos[i];
+                    const prevLines = prevCampo.length > maxLength ? 2 : 1;
+                    yOffset += prevLines * 18;
+                  }
+                  yOffset += lineIdx * 14;
+                  
+                  return (
+                    <text
+                      key={`${idx}-${lineIdx}`}
+                      x={nivel.x + 12}
+                      y={nivel.y + yOffset}
+                      fontSize="9"
+                      fill="#fff"
+                      opacity="0.9"
+                    >
+                      {lineIdx === 0 ? '• ' : '  '}{line}
+                    </text>
+                  );
+                });
+              })}
             </g>
           ))}
 
-          {/* Nota explicativa */}
+          {/* Leyenda de orden en la parte inferior */}
           <g>
             <rect
               x={50}
-              y={viewBoxHeight - 150}
+              y={viewBoxHeight - 200}
               width={viewBoxWidth - 100}
-              height="130"
-              rx="8"
+              height="180"
+              rx="10"
               fill="#fff"
               stroke="#01579b"
               strokeWidth="2"
             />
             <text
               x={viewBoxWidth / 2}
-              y={viewBoxHeight - 125}
+              y={viewBoxHeight - 175}
               textAnchor="middle"
-              fontSize="16"
+              fontSize="18"
               fontWeight="bold"
               fill="#01579b"
             >
-              💡 Importante: Orden de Creación
+              💡 Orden de Creación (de arriba hacia abajo)
             </text>
-            <text x={80} y={viewBoxHeight - 100} fontSize="12" fill="#333">
-              <tspan fontWeight="bold">1. Canal:</tspan> Primero configura tu canal con moneda y país (esto no se puede cambiar después)
+            <text x={80} y={viewBoxHeight - 145} fontSize="13" fill="#333">
+              <tspan fontWeight="bold" fill="#01579b">0. Canal:</tspan> Configuración inicial (moneda, país) - <tspan fill="#999">Inmutable</tspan>
             </text>
-            <text x={80} y={viewBoxHeight - 80} fontSize="12" fill="#333">
-              <tspan fontWeight="bold">2. Cobertura:</tspan> Crea el tipo básico de seguro (ej: "Seguro de Auto")
+            <text x={80} y={viewBoxHeight - 125} fontSize="13" fill="#333">
+              <tspan fontWeight="bold" fill="#880e4f">1. Cobertura:</tspan> Define el tipo básico de seguro (ej: "Seguro de Auto")
             </text>
-            <text x={80} y={viewBoxHeight - 60} fontSize="12" fill="#333">
-              <tspan fontWeight="bold">3. Variante:</tspan> Crea versiones de la cobertura con precios específicos (ej: "Básico $500", "Premium $1000")
+            <text x={80} y={viewBoxHeight - 105} fontSize="13" fill="#333">
+              <tspan fontWeight="bold" fill="#1b5e20">2. Variante:</tspan> Crea versiones con precios específicos (ej: "Básico $500", "Premium $1000")
             </text>
-            <text x={700} y={viewBoxHeight - 100} fontSize="12" fill="#333">
-              <tspan fontWeight="bold">4. Paquete:</tspan> Agrupa varias variantes en un "combo" (ej: "Paquete Completo" con auto + robo)
+            <text x={80} y={viewBoxHeight - 85} fontSize="13" fill="#333">
+              <tspan fontWeight="bold" fill="#e65100">3. Paquete:</tspan> Agrupa varias variantes en un "combo" (ej: "Paquete Completo" con auto + robo)
             </text>
-            <text x={700} y={viewBoxHeight - 80} fontSize="12" fill="#333">
-              <tspan fontWeight="bold">5. Producto:</tspan> Agrupa paquetes y define características generales (listo para vender)
+            <text x={700} y={viewBoxHeight - 145} fontSize="13" fill="#333">
+              <tspan fontWeight="bold" fill="#4a148c">4. Producto:</tspan> Agrupa paquetes y define características generales (listo para vender)
             </text>
-            <text x={700} y={viewBoxHeight - 60} fontSize="12" fill="#333">
-              <tspan fontWeight="bold">6. Póliza:</tspan> Se emite cuando un cliente compra el producto (contrato individual)
+            <text x={700} y={viewBoxHeight - 125} fontSize="13" fill="#333">
+              <tspan fontWeight="bold" fill="#4caf50">5. Póliza:</tspan> Se emite cuando un cliente compra el producto (contrato individual)
+            </text>
+            <text x={700} y={viewBoxHeight - 105} fontSize="12" fill="#666" fontStyle="italic">
+              ⚠️ Importante: La moneda y país del canal no se pueden cambiar después de crearlo
+            </text>
+            <text x={700} y={viewBoxHeight - 85} fontSize="12" fill="#666" fontStyle="italic">
+              📋 Las relaciones N:M usan tablas intermedias (packages_variants, products_packages)
+            </text>
+            <text x={700} y={viewBoxHeight - 65} fontSize="12" fill="#666" fontStyle="italic">
+              💡 Usa el zoom para ver mejor los detalles de cada elemento
             </text>
           </g>
         </svg>
