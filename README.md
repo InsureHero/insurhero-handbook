@@ -52,6 +52,14 @@ yarn build
 
 Este comando genera contenido estático en el directorio `build` y puede ser servido usando cualquier servicio de hosting de contenido estático.
 
+### Diagramas (Mermaid → SVG)
+
+Algunas páginas muestran diagramas como imágenes en `static/img/diagrams/`. En el sitio, **clic en el diagrama** abre un zoom a pantalla completa (`medium-zoom` en `src/theme/Root.tsx`). Si editas un archivo en `diagrams/*.mmd`, regenera los SVG (requiere `puppeteer` instalado):
+
+```bash
+yarn diagrams:build
+```
+
 ## Despliegue
 
 ### Usando SSH:

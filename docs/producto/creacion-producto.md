@@ -36,6 +36,7 @@ Según el schema de Supabase, un canal tiene estos campos principales:
 | `status` | `text` | Estado: 'ACTIVE' o 'INACTIVE' | Sí |
 | `email` | `text` | Email de contacto | Sí |
 | `phone_number` | `text` | Teléfono de contacto | Sí |
+| `timezone` | `text` | **Zona horaria IANA** del canal (p. ej. `America/Mexico_City`). Usada para **ventanas locales** en reportes y skills (correos agregados, cron). Debe ser coherente con el país de operación | Sí (recomendado configurarla al crear el canal) |
 | `is_broker` | `boolean` | Si el canal es un broker | Sí |
 | `production` | `boolean` | Si está en producción | Sí |
 
@@ -51,6 +52,7 @@ Según el schema de Supabase, un canal tiene estos campos principales:
   "status": "ACTIVE",
   "email": "contacto@segurosabc.com",
   "phone_number": "+52 55 1234 5678",
+  "timezone": "America/Mexico_City",
   "is_broker": false,
   "production": true
 }
@@ -61,6 +63,7 @@ Según el schema de Supabase, un canal tiene estos campos principales:
 - **`currency_id`** y **`country_id`** son campos **inmutables** una vez creado el canal
 - Todos los productos, paquetes, variantes y coberturas creados en este canal usarán esta moneda y país
 - Si necesitas operar en otro país o moneda, debes crear un nuevo canal
+- **`timezone`** condiciona cómo el backend interpreta “día local” para **skills de notificación** y reportes programados (ver [Notificaciones, skills y Supabase Edge](../arquitectura/notificaciones-skills-supabase.md))
 
 ---
 

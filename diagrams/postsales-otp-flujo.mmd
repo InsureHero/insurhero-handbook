@@ -1,0 +1,60 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#ffffff',
+    'mainBkg': '#ffffff',
+    'textColor': '#1a237e',
+    'actorBkg': '#e8eaf6',
+    'actorBorder': '#5c6bc0',
+    'actorTextColor': '#1a237e',
+    'actorLineColor': '#7986cb',
+    'signalColor': '#3949ab',
+    'signalTextColor': '#0d47a1',
+    'labelBoxBkgColor': '#fff8e1',
+    'labelBoxBorderColor': '#ff8f00',
+    'labelTextColor': '#e65100',
+    'loopTextColor': '#bf360c',
+    'noteBkgColor': '#e3f2fd',
+    'noteTextColor': '#0d47a1',
+    'noteBorderColor': '#1976d2',
+    'activationBkgColor': '#bbdefb',
+    'activationBorderColor': '#1565c0',
+    'sequenceNumberColor': '#c62828'
+  },
+  'sequence': {
+    'mirrorActors': false,
+    'wrap': true,
+    'wrapPadding': 14,
+    'actorMargin': 200,
+    'boxMargin': 22,
+    'messageMargin': 62,
+    'noteMargin': 20,
+    'diagramMarginX': 56,
+    'diagramMarginY': 28,
+    'width': 320,
+    'height': 92,
+    'actorFontSize': 13,
+    'messageFontSize': 13,
+    'noteFontSize': 12
+  }
+}}%%
+sequenceDiagram
+  participant U as Usuario titular
+  participant FE as Front postventa
+  participant OTP as Solicitud código OTP
+  participant Mail as Correo OTP
+  participant V as Verificar código OTP
+  participant API as Risk items API
+
+  Note over OTP,API: Rutas: /api/postsales/v1/auth/otp/request, /auth/otp/verify y /risk-items/…
+
+  U->>FE: Introduce email
+  FE->>OTP: Email
+  OTP->>OTP: RPC postsales_risk_item_ids<br/>by_holder_email
+  OTP->>Mail: Envía código
+  U->>FE: Introduce código
+  FE->>V: email + código
+  V-->>FE: JWT post-sales
+  FE->>API: Authorization Bearer JWT
+  API-->>U: Datos / actualizaciones<br/>permitidas

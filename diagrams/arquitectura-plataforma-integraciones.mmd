@@ -1,0 +1,107 @@
+%%{init: {
+  'flowchart': { 'htmlLabels': true, 'curve': 'basis', 'padding': 18, 'nodeSpacing': 45, 'rankSpacing': 55 },
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#fafafa',
+    'primaryTextColor': '#1a237e',
+    'lineColor': '#546e7a',
+    'clusterBkg': '#fffde7',
+    'clusterBorder': '#fbc02d',
+    'titleColor': '#e65100'
+  }
+}}%%
+flowchart TB
+  subgraph sticky_entrada["Entrada"]
+    subgraph partners["Partners / visitantes"]
+      direction LR
+      V[Visitante]
+      C2[Cliente 2]
+      C3[Cliente 3]
+    end
+    CC[Client Channels]
+    V --> CC
+    C2 --> CC
+    C3 --> CC
+  end
+
+  subgraph capa_core["Core InsureHero"]
+    direction TB
+    SUPA[("Supabase")]
+    SH[Shield · seguridad y orígenes<br/>componente independiente]
+    CORE[Insurhero Core]
+    TRPC[Next.js · tRPC · APIs internas]
+    SUPA --> CORE
+    SH --> CORE
+    CC --> CORE
+    CORE --> TRPC
+  end
+
+  subgraph bd_canal_integracion["Metadatos en BD (canal + integraciones)"]
+    direction TB
+    CHN["channels · timezone IANA · email · skills admin"]
+    INTG["integrations · slug · auth_config"]
+  end
+
+  SUPA -.-> CHN
+  SUPA -.-> INTG
+
+  AWS[Mail / AWS]
+  LAND[Landing beneficiarios]
+  AWS --> LAND
+  CORE --> LAND
+
+  O[Orquestador · capa entre core e integraciones]
+
+  TRPC --> O
+  CORE --> O
+  INTG -. resuelve adaptador PHOENIX / AMA .-> O
+
+  subgraph integraciones["Integraciones · cada una con mapping"]
+    direction TB
+    P1[Phoenix Adapter]
+    P2[Adaptador X]
+    P3[Adaptador Y]
+    P4[Adaptador Z / AMA · …]
+  end
+
+  O --> P1
+  O --> P2
+  O --> P3
+  O --> P4
+
+  CE[Contrato emitido / unificado]
+
+  P1 --> CE
+  P2 --> CE
+  P3 --> CE
+  P4 --> CE
+
+  ME[Manejador de errores]
+  DC[Discord]
+  subgraph pila["Pila · reintentos"]
+    direction TB
+    PILA[Contratos fallidos · cola]
+    E1[Emisión fallida …]
+  end
+
+  O --> ME
+  CHN -. ventana horaria local · skills / reportes .-> ME
+  P4 -. fallo .-> PILA
+  ME --> DC
+  ME --> PILA
+  PILA --> E1
+  PILA -. reintento .-> CE
+
+  classDef sticky fill:#fff9c4,stroke:#f9a825,stroke-width:2px,color:#5d4037
+  classDef core fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+  classDef orch fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c
+  classDef adapter fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+  classDef out fill:#e0f2f1,stroke:#00695c,stroke-width:3px,color:#004d40
+  classDef err fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c
+
+  class SH,CORE,TRPC,SUPA,CC,V,C2,C3,AWS,LAND,CHN,INTG core
+  class O orch
+  class P1,P2,P3,P4 adapter
+  class CE out
+  class ME,DC,PILA,E1 err

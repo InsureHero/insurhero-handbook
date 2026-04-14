@@ -18,6 +18,8 @@ La API Shield utiliza un sistema de autenticación basado en tokens:
 - **Validación**: Middleware valida el token antes de procesar requests
 - **Blacklist**: Algunos endpoints están excluidos de autenticación (ej: `/api/shield/v1/auth`)
 
+Referencia detallada (tokens por rama, namespaces, ejemplos): [Shield (API nativa)](../api-reference/shield/intro.md).
+
 ## Autorización
 
 ### Row Level Security (RLS)

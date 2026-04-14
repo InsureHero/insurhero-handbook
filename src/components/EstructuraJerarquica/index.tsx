@@ -92,7 +92,14 @@ const EstructuraJerarquica: React.FC = () => {
       titulo: 'CANAL',
       icono: '🔵',
       color: '#01579b',
-      campos: ['Moneda (currency_id)', 'País (country_id)', 'API Key', 'Status', 'Email'],
+      campos: [
+        'Moneda (currency_id)',
+        'País (country_id)',
+        'API Key',
+        'Status',
+        'Email',
+        'Timezone (IANA) · reportes/skills',
+      ],
       posicion: { x: 400, y: 100 }
     },
     {

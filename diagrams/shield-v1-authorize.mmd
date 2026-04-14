@@ -1,0 +1,53 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#ffffff',
+    'mainBkg': '#ffffff',
+    'textColor': '#1b5e20',
+    'actorBkg': '#e8f5e9',
+    'actorBorder': '#43a047',
+    'actorTextColor': '#1b5e20',
+    'actorLineColor': '#66bb6a',
+    'signalColor': '#2e7d32',
+    'signalTextColor': '#1b5e20',
+    'labelBoxBkgColor': '#e3f2fd',
+    'labelBoxBorderColor': '#1976d2',
+    'labelTextColor': '#0d47a1',
+    'noteBkgColor': '#fff8e1',
+    'noteTextColor': '#f57f17',
+    'noteBorderColor': '#ffa726',
+    'activationBkgColor': '#dcedc8',
+    'activationBorderColor': '#558b2f',
+    'sequenceNumberColor': '#c62828'
+  },
+  'sequence': {
+    'mirrorActors': false,
+    'wrap': true,
+    'wrapPadding': 14,
+    'actorMargin': 190,
+    'boxMargin': 22,
+    'messageMargin': 58,
+    'diagramMarginX': 48,
+    'diagramMarginY': 26,
+    'width': 300,
+    'height': 96,
+    'actorFontSize': 13,
+    'messageFontSize': 13,
+    'noteFontSize': 12
+  }
+}}%%
+sequenceDiagram
+  participant Cliente as Partner / script
+  participant Auth as GET /authorize v1
+  participant API as Rutas /api/shield/v1
+  participant MW as shieldAuth.middleware
+
+  Note over Auth,MW: authorize: GET /api/shield/v1/auth/authorize · middleware en todas las rutas
+
+  Cliente->>Auth: Header x-api-key = API key del canal
+  Auth-->>Cliente: 200 + JWT HS256<br/>subject = channel id
+  Cliente->>API: Authorization Bearer JWT
+  API->>MW: Verifica JWT con AUTH_SECRET
+  MW->>API: Inyecta x-channel-id<br/>desde subject
+  API-->>Cliente: Recurso risk items / policies

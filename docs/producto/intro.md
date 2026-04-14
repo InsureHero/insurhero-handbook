@@ -1,127 +1,38 @@
 # Documentación de Producto
 
-Bienvenido a la documentación de producto de InsureHero. Esta sección contiene información sobre las funcionalidades y características del producto.
+Bienvenido a la documentación de producto de InsureHero. Aquí se describe **cómo entender y operar la plataforma** como un producto coherente: catálogo, contratos, siniestros, cobros, personas, canales y conexión con sistemas externos. El tono está pensado para equipos de producto, operación y negocio; cuando haga falta detalle de implementación enlazamos con Arquitectura, Integraciones o API Reference.
 
-## Visión General
+## Cómo está organizado el menú
 
-InsureHero es una plataforma integral para la gestión de seguros que permite:
+| Bloque | Qué encontrarás |
+|--------|------------------|
+| **Introducción** | Esta página y el mapa de arranque. |
+| **Producto y catálogo** | Guía práctica [Cómo crear un producto](./creacion-producto.md) y las **fichas por módulo** (Productos, Pólizas, Reclamos, **Workflows y automatización**, Suscripciones, Usuarios, Canales e Integraciones), todas con secciones **Funcionalidades** y **Características**. |
+| **Flujos y ecosistema** | Cómo encajan venta, pagos, postventa y proveedores en un solo relato: [Flujos e integraciones](./flujos-e-integraciones.md). |
+| **Documentación técnica relacionada** | Accesos a Integraciones, API Reference, tRPC, landings y Arquitectura (misma información que en el menú superior, sin duplicar el detalle técnico aquí). |
 
-- Gestión de productos y pólizas
-- Procesamiento de reclamos
-- Gestión de suscripciones
-- Integración con múltiples canales
-- Dashboard administrativo completo
+Así puedes **saber en qué capa estás**: lectura orientada a negocio frente a especificación o código.
 
-## Crear tu Primer Producto
+## Visión general en pocas líneas
 
-Si eres nuevo en InsureHero, te recomendamos empezar con nuestra guía [Cómo Crear un Producto](./creacion-producto.md), que te explica paso a paso el proceso completo desde la cobertura hasta la emisión de una póliza, con ejemplos prácticos y lenguaje sencillo.
+InsureHero concentra en una sola plataforma:
 
-## Estructura de Productos
+- **Catálogo** — De cobertura a producto vendible, con precios y reglas que respetan canal, moneda y país.
+- **Contratos** — Pólizas con titular, vigencia, instantáneas de lo contratado y enlaces operativos (cobros, integraciones).
+- **Siniestros** — Reclamos con estados, documentación y trazabilidad.
+- **Cobro recurrente** — Suscripciones alineadas con cómo definiste el paquete.
+- **Gobernanza** — Usuarios, roles y canales que segmentan el negocio de forma segura.
+- **Conectividad** — Integraciones con aseguradoras y pagos sin empastar el núcleo.
 
-Para entender cómo se organizan los productos en InsureHero, consulta la [Estructura Jerárquica de Productos](../arquitectura/estructura-jerarquica-productos.md) en la sección de Arquitectura, que explica en detalle la relación entre Canales, Productos, Paquetes, Variantes y Coberturas, incluyendo cómo se configuran precios, reglas y monedas en cada nivel.
+## Por dónde empezar
 
-## Características Principales
+- **Si vas a configurar oferta nueva** — Sigue [Cómo crear un producto](./creacion-producto.md) y, en paralelo, lee [Módulo de Productos](./modulo-productos.md) y [Módulo de Canales](./modulo-canales.md) para ubicar decisiones que no se pueden deshacer (por ejemplo moneda y país del canal).
+- **Si tu foco es operación o soporte** — Revisa [Módulo de Pólizas](./modulo-polizas.md), [Módulo de Reclamos](./modulo-reclamos.md), [Módulo de Workflows y automatización](./modulo-workflows.md) y [Módulo de Suscripciones](./modulo-suscripciones.md).
+- **Si te ocupa la identidad y el acceso** — [Módulo de Usuarios](./modulo-usuarios.md).
+- **Si necesitas el mapa completo** — [Módulos del producto](./modulos.md) lista las siete fichas en un solo vistazo.
 
-### Gestión de Productos
+## Estructura jerárquica (referencia)
 
-- Creación y configuración de productos de seguros
-- Definición de paquetes y variantes
-- Gestión de coberturas
-- Configuración de precios
+La relación **Canal → Cobertura → Variante → Paquete → Producto** está explicada con detalle en Arquitectura: [Estructura jerárquica de productos](../arquitectura/estructura-jerarquica-productos.md).
 
-### Gestión de Pólizas
-
-- Emisión de pólizas
-- Renovación automática
-- Gestión del ciclo de vida
-- Historial completo
-
-### Procesamiento de Reclamos
-
-- Creación y seguimiento de reclamos
-- Flujos de trabajo personalizables
-- Comunicación con asegurados
-- Gestión de documentos
-
-### Suscripciones
-
-- Gestión de suscripciones activas
-- Procesamiento de pagos
-- Renovaciones automáticas
-- Notificaciones
-
-## Módulos del Sistema
-
-### Dashboard
-
-Panel de control para administradores con:
-
-- Métricas y estadísticas
-- Gestión de usuarios y permisos
-- Configuración del sistema
-- Reportes y análisis
-
-### API Shield
-
-API REST para integraciones externas:
-
-- Endpoints para productos, pólizas, reclamos
-- Autenticación basada en tokens
-- Documentación completa
-- Versionado de API
-
-### Integraciones
-
-Soporte para múltiples integraciones:
-
-- Webhooks
-- Integraciones de IA
-- Canales de distribución
-- Sistemas externos
-
-## Flujos de Trabajo
-
-### Flujo de Emisión de Póliza
-
-1. Selección de producto
-2. Configuración de coberturas
-3. Información del asegurado
-4. Cálculo de prima
-5. Procesamiento de pago
-6. Emisión de póliza
-
-### Flujo de Reclamo
-
-1. Creación de reclamo
-2. Evaluación inicial
-3. Asignación a evaluador
-4. Revisión y aprobación
-5. Procesamiento de pago
-6. Cierre de reclamo
-
-## Usuarios y Roles
-
-### Administrador
-
-Acceso completo al sistema:
-
-- Gestión de productos y configuraciones
-- Gestión de usuarios
-- Acceso a reportes
-- Configuración del sistema
-
-### Agente
-
-Acceso limitado a funcionalidades específicas:
-
-- Creación de pólizas
-- Gestión de reclamos asignados
-- Consulta de información
-
-### Usuario Final
-
-Acceso básico:
-
-- Consulta de pólizas
-- Creación de reclamos
-- Visualización de estado
+Cuando el catálogo ya existe, el día a día gira en torno al **risk item** (instancia operativa del contrato en curso: titular, integraciones, postventa, reclamos). Léelo en [Risk item (concepto central)](../arquitectura/risk-item.md).

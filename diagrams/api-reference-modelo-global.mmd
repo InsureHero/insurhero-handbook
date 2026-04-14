@@ -1,0 +1,43 @@
+%%{init: {
+  'flowchart': { 'htmlLabels': true, 'curve': 'linear', 'padding': 20, 'nodeSpacing': 50, 'rankSpacing': 55 },
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#f8fafc',
+    'primaryColor': '#e8eaf6',
+    'primaryTextColor': '#1a237e',
+    'primaryBorderColor': '#5c6bc0',
+    'secondaryColor': '#e0f2f1',
+    'secondaryTextColor': '#004d40',
+    'tertiaryColor': '#fff3e0',
+    'tertiaryTextColor': '#e65100',
+    'lineColor': '#455a64',
+    'textColor': '#263238',
+    'clusterBkg': '#eceff1',
+    'clusterBorder': '#78909c',
+    'titleColor': '#37474f',
+    'edgeLabelBackground': '#ffffff'
+  }
+}}%%
+flowchart LR
+  subgraph Dashboard["Dashboard"]
+    A[tRPC]
+  end
+  subgraph Externo["HTTP externo"]
+    B[Shield REST]
+    C[Post-sales REST]
+  end
+  subgraph Core["Core"]
+    D[(Supabase)]
+  end
+  A --> D
+  B --> D
+  C --> D
+
+  classDef dash fill:#e8eaf6,stroke:#3949ab,stroke-width:3px,color:#1a237e
+  classDef ext fill:#e0f2f1,stroke:#00897b,stroke-width:3px,color:#004d40
+  classDef core fill:#fff3e0,stroke:#ef6c00,stroke-width:3px,color:#e65100
+
+  class A dash
+  class B,C ext
+  class D core

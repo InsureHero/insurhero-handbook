@@ -1,0 +1,54 @@
+%%{init: {
+  'flowchart': { 'htmlLabels': true, 'curve': 'basis', 'padding': 16, 'nodeSpacing': 45, 'rankSpacing': 55 },
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#f5f7fa',
+    'primaryTextColor': '#0d47a1',
+    'secondaryTextColor': '#bf360c',
+    'tertiaryTextColor': '#1b5e20',
+    'lineColor': '#546e7a',
+    'textColor': '#212121',
+    'clusterBkg': '#eceff1',
+    'clusterBorder': '#90a4ae',
+    'titleColor': '#37474f',
+    'edgeLabelBackground': '#ffffff'
+  }
+}}%%
+flowchart TD
+  subgraph in["Entrada"]
+    A([Trigger / POST dispatch])
+  end
+
+  A --> B{¿Paquete tiene sales_integration_slug?}
+  B -->|No| Z[skipped]
+  B -->|Sí| C[Construir StandardRiskItem]
+
+  subgraph orch["Orquestador"]
+    C --> D[orchestrateInsuranceEmission]
+  end
+
+  D --> E{¿Adapter.emit OK?}
+  E -->|Sí| F[integration_emissions SUCCESS<br/>+ metadata risk_item]
+  E -->|No reintentable| G[ABANDONED + Discord]
+  E -->|Reintentable| H[FAILED + next_retry_at<br/>+ Discord opcional]
+
+  subgraph retry["Reintentos"]
+    H --> I{¿QStash configurado?}
+    I -->|Sí| J[Cola → POST /api/integrations/retry]
+    I -->|No| K[Solo registro en BD]
+  end
+
+  classDef ok fill:#c8e6c9,stroke:#1b5e20,stroke-width:3px,color:#1b5e20
+  classDef fail fill:#ffcdd2,stroke:#b71c1c,stroke-width:3px,color:#b71c1c
+  classDef warn fill:#ffe082,stroke:#f57f17,stroke-width:3px,color:#e65100
+  classDef neutral fill:#bbdefb,stroke:#1565c0,stroke-width:3px,color:#0d47a1
+  classDef skip fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#455a64
+  classDef decision fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#01579b
+
+  class F ok
+  class G fail
+  class H,J warn
+  class A,C,D neutral
+  class Z skip
+  class B,E,I decision

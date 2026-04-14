@@ -31,9 +31,15 @@ const EstructuraCreacionProducto: React.FC = () => {
       x: 590,
       y: 50,
       width: 220,
-      height: 150,
+      height: 170,
       descripcion: 'Configuración Base',
-      campos: ['Moneda de operación', 'País de operación', 'API Key automática', 'Estado del canal']
+      campos: [
+        'Moneda de operación',
+        'País de operación',
+        'Zona horaria IANA (reportes/skills)',
+        'API Key automática',
+        'Estado del canal',
+      ]
     },
     {
       id: 'Coverage',

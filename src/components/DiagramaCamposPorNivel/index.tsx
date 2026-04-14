@@ -34,7 +34,8 @@ const DiagramaCamposPorNivel: React.FC = () => {
         { texto: 'name', x: 550, y: 300 },
         { texto: 'api_key', x: 500, y: 350 },
         { texto: 'status', x: 600, y: 350 },
-        { texto: 'email', x: 550, y: 400 }
+        { texto: 'email', x: 550, y: 400 },
+        { texto: 'timezone 🕐 IANA', x: 550, y: 450 }
       ]
     },
     {

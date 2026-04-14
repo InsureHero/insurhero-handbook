@@ -1,0 +1,54 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#ffffff',
+    'mainBkg': '#ffffff',
+    'textColor': '#1a237e',
+    'actorBkg': '#e3f2fd',
+    'actorBorder': '#1976d2',
+    'actorTextColor': '#0d47a1',
+    'actorLineColor': '#42a5f5',
+    'signalColor': '#1565c0',
+    'signalTextColor': '#01579b',
+    'labelBoxBkgColor': '#fce4ec',
+    'labelBoxBorderColor': '#c2185b',
+    'labelTextColor': '#880e4f',
+    'loopTextColor': '#ad1457',
+    'noteBkgColor': '#fff3e0',
+    'noteTextColor': '#e65100',
+    'noteBorderColor': '#fb8c00',
+    'activationBkgColor': '#c8e6c9',
+    'activationBorderColor': '#2e7d32',
+    'sequenceNumberColor': '#6a1b9a'
+  },
+  'sequence': {
+    'mirrorActors': false,
+    'wrap': true,
+    'wrapPadding': 14,
+    'actorMargin': 190,
+    'boxMargin': 22,
+    'messageMargin': 58,
+    'diagramMarginX': 48,
+    'diagramMarginY': 26,
+    'width': 280,
+    'height': 92,
+    'actorFontSize': 13,
+    'messageFontSize': 13
+  }
+}}%%
+sequenceDiagram
+  participant UI as Componente React
+  participant TRPC as Cliente tRPC
+  participant API as POST /api/trpc
+  participant CTX as Contexto Supabase
+  participant PROC as Procedimiento tRPC
+
+  UI->>TRPC: trpc.*.useQuery / useMutation
+  TRPC->>API: Petición batch nombre + input
+  API->>CTX: createContext + sesión
+  alt userProcedure
+    CTX->>PROC: Exige sesión o UNAUTHORIZED
+  end
+  PROC->>PROC: Lógica + Zod + Supabase
+  PROC-->>UI: Resultado tipado

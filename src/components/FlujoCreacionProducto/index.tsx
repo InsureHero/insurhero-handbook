@@ -39,8 +39,9 @@ const FlujoCreacionProducto: React.FC = () => {
         'Define moneda de operación',
         'Establece país de operación',
         '⚠️ Moneda y país NO se pueden cambiar',
+        'Timezone IANA (hora local para reportes y skills)',
         'Genera API key automáticamente',
-        'Configuración de contacto'
+        'Configuración de contacto',
       ]
     },
     {

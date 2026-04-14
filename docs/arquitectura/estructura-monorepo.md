@@ -5,15 +5,15 @@ InsureHero utiliza un monorepo gestionado con Turbo para optimizar el desarrollo
 ## Organización de Directorios
 
 ```
-insureHero-develop/
+insureHero/                    # raíz del monorepo (nombre local puede variar)
 ├── apps/
-│   └── next/              # Aplicación principal Next.js
+│   └── next/                  # Aplicación principal Next.js
 ├── packages/
-│   ├── types/             # Tipos TypeScript compartidos
-│   ├── utils/             # Utilidades compartidas
-│   └── builders/          # Builders para testing
-├── turbo.json             # Configuración de Turbo
-└── package.json           # Workspace root
+│   ├── types/                 # Tipos TypeScript compartidos
+│   ├── utils/                 # Utilidades compartidas
+│   └── builders/              # Builders para testing
+├── turbo.json                 # Configuración de Turbo
+└── package.json               # Workspace root
 ```
 
 ## Apps
@@ -22,11 +22,11 @@ insureHero-develop/
 
 Aplicación principal que contiene:
 
-- **src/app/**: Rutas y páginas de Next.js
+- **src/app/**: App Router (rutas, layouts) y **API routes** en `src/app/api/` (REST: Shield, postsales, pagos, webhooks, tRPC…)
 - **src/components/**: Componentes React reutilizables
 - **src/trpc/**: Routers y procedimientos tRPC
-- **src/api/**: Endpoints REST API
-- **supabase/**: Migraciones y configuración de Supabase
+- **src/integrations/**: Adaptadores de aseguradoras, orquestador y contratos
+- **supabase/**: Migraciones, configuración y **Edge Functions** (`supabase/functions/`)
 
 ## Packages
 

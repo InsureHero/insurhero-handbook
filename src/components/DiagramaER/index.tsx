@@ -48,6 +48,11 @@ const DiagramaER: React.FC = () => {
         { nombre: 'api_key', tipo: 'uuid' },
         { nombre: 'status', tipo: 'text' },
         { nombre: 'email', tipo: 'text' },
+        {
+          nombre: 'timezone',
+          tipo: 'text',
+          descripcion: '🕐 IANA · ventanas locales (reportes, skills)',
+        },
         { nombre: 'phone_number', tipo: 'text' },
         { nombre: 'is_broker', tipo: 'boolean' },
         { nombre: 'allow_handshake', tipo: 'boolean' },

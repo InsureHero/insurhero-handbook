@@ -10,240 +10,37 @@ import EstructuraJerarquica from '@site/src/components/EstructuraJerarquica';
 
 ## Diagramas de Estructura
 
-### Diagrama de Relaciones (Entity Relationship) - Vista Visual Interactiva
+Las vistas siguientes son **diagramas interactivos** (zoom y arrastre). **No** mostramos aquí el código fuente de los gráficos: solo el diagrama, para una lectura más clara.
+
+### Diagrama de Relaciones (Entity Relationship)
 
 import DiagramaER from '@site/src/components/DiagramaER';
 
 <DiagramaER />
 
-### Diagrama de Relaciones (Entity Relationship) - Código Mermaid
-
-```mermaid
-erDiagram
-    CHANNEL ||--o{ PRODUCT : "tiene"
-    CHANNEL ||--o{ PACKAGE : "tiene"
-    CHANNEL ||--o{ VARIANT : "tiene"
-    CHANNEL ||--o{ COVERAGE : "tiene"
-    CHANNEL }o--|| CURRENCY : "usa"
-    CHANNEL }o--|| COUNTRY : "opera_en"
-    
-    PRODUCT ||--o{ PRODUCT_PACKAGE : "contiene"
-    PACKAGE ||--o{ PRODUCT_PACKAGE : "pertenece_a"
-    
-    PACKAGE ||--o{ PACKAGE_VARIANT : "incluye"
-    VARIANT ||--o{ PACKAGE_VARIANT : "pertenece_a"
-    
-    COVERAGE ||--o{ VARIANT : "tiene"
-    
-    CHANNEL {
-        uuid id PK
-        uuid currency_id FK "🔑 Moneda (no modificable)"
-        uuid country_id FK "🌍 País (no modificable)"
-        text name
-        uuid api_key
-        text status
-        text email
-        text phone_number
-        boolean is_broker
-        boolean allow_handshake
-        boolean allow_ia
-    }
-    
-    PRODUCT {
-        uuid id PK
-        uuid channel_id FK
-        text code "Código único"
-        jsonb pricing "💰 Configuración de precios"
-        jsonb features "⚙️ Características"
-        jsonb lifecycle "🔄 Ciclo de vida"
-        jsonb overrides "🔧 Modificaciones"
-    }
-    
-    PACKAGE {
-        uuid id PK
-        uuid channel_id FK
-        text name
-        text description
-        jsonb pricing_rules "📋 Reglas de precios"
-    }
-    
-    VARIANT {
-        uuid id PK
-        uuid channel_id FK
-        uuid coverage_id FK
-        text name
-        text gross_price "💰 Expresión matemática"
-        jsonb taxes "💸 Impuestos"
-        jsonb pricing_rules "📋 Reglas de precios"
-        text pricing_type "one_time | recurring"
-        jsonb markup "📈 Margen de ganancia"
-        numeric coverage_limits
-        text deductible
-        text conditions
-        text exclusions
-        jsonb subject_schema "📝 Esquema del sujeto"
-        jsonb claim_schema "📋 Esquema de reclamos"
-    }
-    
-    COVERAGE {
-        uuid id PK
-        uuid channel_id FK
-        uuid insurer_id FK
-        text name
-        text description
-        text insurer_coverage_number
-        text type
-        jsonb metadata
-    }
-    
-    PRODUCT_PACKAGE {
-        uuid id PK
-        uuid product_id FK
-        uuid package_id FK
-        uuid channel_id FK
-    }
-    
-    PACKAGE_VARIANT {
-        uuid id PK
-        uuid package_id FK
-        uuid variant_id FK
-        uuid channel_id FK
-    }
-```
-
-### Diagrama de Jerarquía Visual - Vista Visual Interactiva
+### Diagrama de Jerarquía Visual
 
 import DiagramaJerarquiaVisual from '@site/src/components/DiagramaJerarquiaVisual';
 
 <DiagramaJerarquiaVisual />
 
-### Diagrama de Jerarquía Visual - Código Mermaid
-
-```mermaid
-graph TD
-    A[CANAL<br/>Channel] -->|1:N| B[PRODUCTO<br/>Product]
-    A -->|1:N| C[PAQUETE<br/>Package]
-    A -->|1:N| D[VARIANTE<br/>Variant]
-    A -->|1:N| E[COBERTURA<br/>Coverage]
-    
-    A -->|usa| F[💰 MONEDA<br/>Currency]
-    A -->|opera_en| G[🌍 PAÍS<br/>Country]
-    
-    B -->|N:M| C
-    C -->|N:M| D
-    E -->|1:N| D
-    
-    style A fill:#e1f5ff,stroke:#01579b,stroke-width:3px
-    style B fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    style C fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style D fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    style E fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    style F fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-    style G fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-```
-
-### Diagrama de Flujo de Configuración - Vista Visual Interactiva
+### Diagrama de Flujo de Configuración
 
 import DiagramaFlujoConfiguracion from '@site/src/components/DiagramaFlujoConfiguracion';
 
 <DiagramaFlujoConfiguracion />
 
-### Diagrama de Flujo de Configuración - Código Mermaid
-
-```mermaid
-flowchart TD
-    Start([Inicio: Crear Producto]) --> Channel[🔵 CANAL<br/>Establecer Moneda y País]
-    
-    Channel --> Product[🟣 PRODUCTO<br/>Configurar:<br/>• Código<br/>• Pricing JSONB<br/>• Features<br/>• Lifecycle<br/>• Overrides]
-    
-    Product --> Package[🟠 PAQUETE<br/>Configurar:<br/>• Nombre<br/>• Descripción<br/>• Pricing Rules]
-    
-    Package --> Variant[🟢 VARIANTE<br/>Configurar:<br/>• Gross Price<br/>• Taxes<br/>• Markup<br/>• Pricing Rules<br/>• Subject Schema<br/>• Claim Schema]
-    
-    Variant --> Coverage[🔴 COBERTURA<br/>Configurar:<br/>• Nombre<br/>• Tipo<br/>• Número Aseguradora]
-    
-    Coverage --> End([Producto Completo])
-    
-    style Channel fill:#e1f5ff
-    style Product fill:#f3e5f5
-    style Package fill:#fff3e0
-    style Variant fill:#e8f5e9
-    style Coverage fill:#fce4ec
-```
-
-### Diagrama de Cálculo de Precios - Vista Visual Interactiva
+### Diagrama de Cálculo de Precios
 
 import DiagramaCalculoPrecios from '@site/src/components/DiagramaCalculoPrecios';
 
 <DiagramaCalculoPrecios />
 
-### Diagrama de Cálculo de Precios - Código Mermaid
-
-```mermaid
-flowchart LR
-    A[Sujeto Asegurado<br/>subject_schema] --> B[Evaluar<br/>gross_price<br/>expresión matemática]
-    B --> C[Precio Base<br/>Ej: 1000 + age*50]
-    C --> D[Aplicar<br/>Impuestos<br/>taxes JSONB]
-    D --> E[Precio + Impuestos]
-    E --> F[Aplicar<br/>Markup<br/>markup JSONB]
-    F --> G[💰 Precio Final Bruto]
-    E --> H[Precio Neto<br/>Bruto - Impuestos]
-    
-    style A fill:#e3f2fd
-    style C fill:#fff3e0
-    style E fill:#f3e5f5
-    style G fill:#e8f5e9
-    style H fill:#e8f5e9
-```
-
-### Diagrama de Campos por Nivel - Vista Visual Interactiva
+### Diagrama de Campos por Nivel
 
 import DiagramaCamposPorNivel from '@site/src/components/DiagramaCamposPorNivel';
 
 <DiagramaCamposPorNivel />
-
-### Diagrama de Campos por Nivel - Código Mermaid
-
-```mermaid
-mindmap
-  root((Estructura<br/>InsureHero))
-    CANAL
-      currency_id 🔑
-      country_id 🌍
-      name
-      api_key
-      status
-      email
-    PRODUCTO
-      code
-      pricing JSONB 💰
-      features JSONB ⚙️
-      lifecycle JSONB 🔄
-      overrides JSONB 🔧
-    PAQUETE
-      name
-      description
-      pricing_rules JSONB 📋
-        pricing_type
-        interval
-        billing_cycle
-    VARIANTE
-      gross_price 💰
-      taxes JSONB 💸
-      markup JSONB 📈
-      pricing_rules JSONB
-      coverage_limits
-      deductible
-      conditions
-      exclusions
-      subject_schema 📝
-      claim_schema 📋
-    COVERAGE
-      name
-      type
-      insurer_coverage_number
-      metadata JSONB
-```
 
 ## Descripción Detallada por Nivel
 
@@ -267,8 +64,9 @@ El **Canal** es el nivel más alto de la jerarquía y representa una entidad que
   - `name`: Nombre del canal
   - `api_key`: Clave API única para integraciones
   - `status`: Estado del canal (ACTIVE, INACTIVE)
-  - `email`: Email del canal
+  - `email`: Email del canal (también usado como remitente en ciertos envíos desde Edge Functions)
   - `phone_number`: Número de teléfono
+  - **`timezone`**: Zona horaria en formato **IANA** (p. ej. `America/Mexico_City`). Se usa para interpretar **ventanas de tiempo “locales”** en reportes y skills (p. ej. correo agregado de errores de emisión junto con `pg_cron`). Detalle: [Notificaciones, skills y Supabase Edge](./notificaciones-skills-supabase.md).
   - `is_broker`: Indica si el canal es un broker
   - `allow_handshake`: Permite handshake
   - `allow_ia`: Habilita agente de IA
@@ -283,6 +81,8 @@ CREATE TABLE "channels" (
     name text NOT NULL,
     api_key uuid NOT NULL,
     status text DEFAULT 'ACTIVE',
+    email text,
+    timezone text,              -- IANA: hora local para reportes / skills (ver Edge + cron)
     -- ... otros campos
 );
 ```
@@ -623,6 +423,12 @@ Cálculo:
    - Los esquemas (`subject_schema`, `claim_schema`) tienen palabras reservadas que no pueden usarse
 
 5. **Soft Delete**: Todas las tablas principales tienen `deleted_at` para implementar eliminación lógica.
+
+---
+
+## Del catálogo a la operación: risk items
+
+La jerarquía anterior describe **qué puedes vender**. En la operación diaria, las ventas, integraciones y el portal del titular trabajan sobre **risk items**: la instancia concreta vinculada a un canal, un paquete, titular y variantes. Resumen conceptual y enlaces a APIs: **[Risk item (concepto central)](./risk-item.md)**.
 
 ---
 

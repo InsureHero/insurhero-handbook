@@ -37,7 +37,7 @@ const DiagramaFlujoConfiguracion: React.FC = () => {
       x: 400,
       y: 180,
       color: '#e1f5ff',
-      detalles: ['Moneda (currency_id)', 'País (country_id)']
+      detalles: ['Moneda (currency_id)', 'País (country_id)', 'Timezone IANA (reportes/skills)']
     },
     {
       id: 'Product',

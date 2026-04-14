@@ -1,0 +1,32 @@
+%%{init: {
+  'flowchart': { 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 40, 'rankSpacing': 50 },
+  'theme': 'base',
+  'themeVariables': {
+    'darkMode': false,
+    'background': '#f8fafc',
+    'lineColor': '#455a64',
+    'textColor': '#263238',
+    'clusterBkg': '#e3f2fd',
+    'clusterBorder': '#1976d2',
+    'titleColor': '#0d47a1',
+    'edgeLabelBackground': '#ffffff'
+  }
+}}%%
+flowchart LR
+  subgraph Landing["Landing Vidanta landing-next"]
+    A[OTP + JWT en sessionStorage]
+    B[Steps Summary → Travelers → Confirm]
+  end
+  subgraph API["Backend InsureHero"]
+    P["/api/postsales/v1/*"]
+    I["/api/integrations/post-sales"]
+  end
+  A --> P
+  B --> P
+  B --> I
+
+  classDef land fill:#e8eaf6,stroke:#3949ab,stroke-width:3px,color:#1a237e
+  classDef api fill:#e0f7fa,stroke:#00838f,stroke-width:3px,color:#006064
+
+  class A,B land
+  class P,I api

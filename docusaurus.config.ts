@@ -9,6 +9,12 @@ const config: Config = {
   tagline: 'Documentación de la plataforma de seguros',
   favicon: 'img/favicon.ico',
 
+  themes: ['@docusaurus/theme-mermaid'],
+
+  markdown: {
+    mermaid: true,
+  },
+
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
@@ -88,6 +94,12 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
+          sidebarId: 'integracionesSidebar',
+          position: 'left',
+          label: 'Integraciones',
+        },
+        {
+          type: 'docSidebar',
           sidebarId: 'apiReferenceSidebar',
           position: 'left',
           label: 'API Reference',
@@ -115,6 +127,10 @@ const config: Config = {
             {
               label: 'Arquitectura',
               to: '/arquitectura/intro',
+            },
+            {
+              label: 'Integraciones',
+              to: '/integraciones/intro',
             },
             {
               label: 'API Reference',

@@ -40,8 +40,16 @@ Supabase PostgreSQL con:
 
 ### APIs
 
-- **tRPC**: API tipada para el dashboard interno
-- **REST API**: Endpoints `/api/shield` para integraciones externas
+- **tRPC**: API tipada para el dashboard interno (`/api/trpc`)
+- **REST**: familia **Shield** (`/api/shield/...`) y superficies adicionales (postventa, pagos, webhooks); ver [Superficies REST](../api-reference/rest-superficies.md)
+
+### Integraciones en código
+
+Todo el bloque de **integraciones externas** (adaptadores, orquestador, APIs, landing Vidanta) tiene su propia entrada en el menú: **[Integraciones](../integraciones/intro)**. Desde ahí se enlazan [Integraciones (desarrollo)](./integraciones.md), [Orquestador e integraciones](./orquestador-integraciones.md) y [Notificaciones, skills y Supabase Edge](./notificaciones-skills-supabase.md), además de las APIs HTTP relacionadas.
+
+Para **workflows de reclamos**, rutas `/api/workflows`, webhooks y la relación con **skills** de administración: [Workflows, automatización y skills](./workflows-y-skills.md).
+
+El **risk item** es el objeto operativo central del core (emisión, postventa, integraciones): [Risk item](./risk-item.md).
 
 ## Estructura de Datos
 

@@ -34,6 +34,10 @@ yarn compile
 yarn dev
 ```
 
+## Landing page Vidanta (repositorio aparte)
+
+El **landing de Vidanta** para titulares (OTP, viajeros, integración post-sales) vive en un proyecto **Next.js** fuera del monorepo principal. La documentación de producto y menú principal está en **[Integraciones → Canal Vidanta](../integraciones/vidanta)**; la [guía técnica detallada](./landing-page-postventa.md) enlaza desde ahí y mantiene el mismo menú lateral de Integraciones.
+
 ## Estructura del Código
 
 ### Convenciones
@@ -47,14 +51,17 @@ yarn dev
 
 ```
 src/
-├── app/              # Rutas y páginas Next.js
+├── app/              # App Router y API routes (`app/api/`)
 ├── components/       # Componentes React
-├── trpc/            # Routers y procedimientos tRPC
-├── utils/           # Utilidades
-├── hooks/           # Custom hooks
-├── stores/          # Estado global (Zustand)
-└── types/           # Tipos TypeScript
+├── integrations/     # Adaptadores externos, orquestador, contratos
+├── trpc/             # Routers y procedimientos tRPC
+├── utils/            # Utilidades
+├── hooks/            # Custom hooks
+├── stores/           # Estado global (Zustand)
+└── types/            # Tipos TypeScript
 ```
+
+La documentación de alto nivel de integraciones está en [Integraciones (arquitectura)](../arquitectura/integraciones.md) y el mapa HTTP en [Superficies REST](../api-reference/rest-superficies.md).
 
 ## Flujo de Trabajo
 
