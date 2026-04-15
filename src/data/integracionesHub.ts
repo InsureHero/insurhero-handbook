@@ -72,7 +72,7 @@ export const integracionesHubItems: IntegracionHubItem[] = [
     id: 'pagos',
     title: 'Pagos (Silice / Reef)',
     description:
-      'Tokenización Silice, widget Reef en el front del monorepo y cierre vía processPayment.',
+      'Tokenización Silice, widget Reef en el monorepo, payment widget por iframe (repo aparte) y cierre vía processPayment.',
     ficha: {label: 'Ficha Silice y Reef', to: '/integraciones/silice-y-reef'},
     apis: [
       {label: 'Superficies REST (payments / processPayment)', to: '/api-reference/rest-superficies'},
@@ -82,7 +82,8 @@ export const integracionesHubItems: IntegracionHubItem[] = [
       {label: 'Suscripciones y cobros', to: '/producto/modulo-suscripciones'},
     ],
     desarrollo: [
-      {label: 'Código: reefWidget, components/pay', to: '/integraciones/silice-y-reef'},
+      {label: 'Payment widget (iframe, postMessage)', to: '/integraciones/payment-widget'},
+      {label: 'Código monorepo: reefWidget, components/pay', to: '/integraciones/silice-y-reef'},
     ],
   },
   {

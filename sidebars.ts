@@ -89,6 +89,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'integraciones/payment-widget',
+          label: 'Payment widget (iframe)',
+        },
+        {
+          type: 'doc',
           id: 'integraciones/capa-shield',
           label: 'Shield',
         },
@@ -205,8 +210,23 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guias-desarrollo/estructura-base-y-extension',
+      label: 'Estructura base y extensión',
+    },
+    {
+      type: 'doc',
+      id: 'guias-desarrollo/interfaces-y-contratos-typescript',
+      label: 'Interfaces y contratos TypeScript',
+    },
+    {
+      type: 'doc',
+      id: 'guias-desarrollo/nuevas-rutas-shield',
+      label: 'Nuevas rutas Shield',
+    },
+    {
+      type: 'doc',
       id: 'guias-desarrollo/componentes',
-      label: 'Guía de Componentes',
+      label: 'Guía de componentes',
     },
     {
       type: 'doc',
@@ -214,8 +234,13 @@ const sidebars: SidebarsConfig = {
       label: 'Guía de tRPC',
     },
     {
+      type: 'doc',
+      id: 'guias-desarrollo/landing-page-postventa',
+      label: 'Landing Vidanta (postventa)',
+    },
+    {
       type: 'link',
-      label: 'Landing Vidanta (doc. en Integraciones)',
+      label: 'Canal Vidanta (contexto producto)',
       href: '/integraciones/vidanta',
     },
   ],

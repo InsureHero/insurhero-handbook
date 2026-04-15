@@ -68,5 +68,6 @@ Lógica desplegada fuera del proceso Next (cron, reportes, etc.) vive en `apps/n
 - [Shield (API nativa)](./shield/intro.md) — convenciones y buenas prácticas.
 - [Integraciones (arquitectura)](../arquitectura/integraciones.md) — adaptadores y capa de integración en el monorepo.
 - [API Post-sales](./postsales-api.md) — OTP, JWT y `integrations/post-sales`.
+- [Payment widget (iframe)](../integraciones/payment-widget.md) — front aparte que consume `/api/payments/silice/token` y Reef por `postMessage`.
 - [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md) — workflows de reclamos, `/api/workflows` y skills de administración.
 - [Notificaciones, skills y Supabase Edge](../arquitectura/notificaciones-skills-supabase.md) — skill `notification.integration.error` y Edge Function.

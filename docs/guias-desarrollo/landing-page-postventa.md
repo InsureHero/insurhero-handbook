@@ -1,5 +1,5 @@
 ---
-displayed_sidebar: integracionesSidebar
+displayed_sidebar: guiasDesarrolloSidebar
 ---
 
 # Landing page Vidanta (postventa)

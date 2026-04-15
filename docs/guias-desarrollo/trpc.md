@@ -1,6 +1,12 @@
+---
+displayed_sidebar: guiasDesarrolloSidebar
+---
+
 # Guía de tRPC
 
-Guía para trabajar con tRPC en InsureHero.
+Guía para trabajar con **tRPC** en InsureHero: API **interna** del dashboard y jobs, distinta de la API **Shield** (REST pública). Si expones funcionalidad a partners o canales externos, revisa [Nuevas rutas Shield](./nuevas-rutas-shield.md) y [API Reference: tRPC](../api-reference/trpc-api.md).
+
+Convenciones generales del repo: [Estructura base y extensión](./estructura-base-y-extension.md).
 
 ## Crear un Router
 
