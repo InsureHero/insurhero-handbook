@@ -1,63 +1,33 @@
 import type {ReactNode} from 'react';
 import clsx from 'clsx';
 import Heading from '@theme/Heading';
+import {
+  homeHubItems,
+  type HomeHubIllustration,
+} from '@site/src/data/homeHub';
 import styles from './styles.module.css';
 
-type FeatureItem = {
-  title: string;
-  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
-  description: ReactNode;
-  link: string;
+const illustrations: Record<
+  HomeHubIllustration,
+  React.ComponentType<React.ComponentProps<'svg'>>
+> = {
+  mountain: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+  tree: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+  react: require('@site/static/img/undraw_docusaurus_react.svg').default,
 };
 
-const FeatureList: FeatureItem[] = [
-  {
-    title: 'Arquitectura',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-    description: (
-      <>
-        Documentación completa sobre la arquitectura del sistema, estructura del monorepo,
-        autenticación y decisiones de diseño.
-      </>
-    ),
-    link: '/arquitectura/intro',
-  },
-  {
-    title: 'API Reference',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
-    description: (
-      <>
-        Referencia completa de las APIs disponibles: tRPC para el dashboard interno
-        y REST API (Shield) para integraciones externas.
-      </>
-    ),
-    link: '/api-reference/intro',
-  },
-  {
-    title: 'Guías de Desarrollo',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
-    description: (
-      <>
-        Guías prácticas para desarrolladores: configuración del entorno,
-        creación de componentes, uso de tRPC y mejores prácticas.
-      </>
-    ),
-    link: '/guias-desarrollo/intro',
-  },
-  {
-    title: 'Documentación de Producto',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-    description: (
-      <>
-        Información sobre las funcionalidades del producto, módulos disponibles
-        y flujos de trabajo del sistema.
-      </>
-    ),
-    link: '/producto/intro',
-  },
-];
-
-function Feature({title, Svg, description, link}: FeatureItem) {
+function Feature({
+  title,
+  illustration,
+  description,
+  link,
+}: {
+  title: string;
+  illustration: HomeHubIllustration;
+  description: string;
+  link: string;
+}) {
+  const Svg = illustrations[illustration];
   return (
     <div className={clsx('col col--3 margin-bottom--lg')}>
       <div className="text--center">
@@ -79,8 +49,8 @@ export default function HomepageFeatures(): ReactNode {
     <section className={styles.features}>
       <div className="container">
         <div className="row">
-          {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
+          {homeHubItems.map((props) => (
+            <Feature key={props.id} {...props} />
           ))}
         </div>
       </div>

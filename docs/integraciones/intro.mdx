@@ -1,0 +1,24 @@
+---
+sidebar_position: 1
+displayed_sidebar: integracionesSidebar
+---
+
+import IntegracionesHubGrid from '@site/src/components/IntegracionesHubGrid';
+
+# Integraciones
+
+Aquí se documenta **cada sistema externo o capa de exposición** con tres ejes: **qué es** (ficha), **qué APIs o contratos** están descritos en el handbook, y **qué flujo** conviene seguir para entender el recorrido completo.
+
+Complementa [Arquitectura](/arquitectura/intro) (monorepo y core) y enlaza con [API Reference](/api-reference/intro) y [Producto · Flujos e integraciones](/producto/flujos-e-integraciones) cuando el tema cruza capas.
+
+## Mapa interactivo
+
+<IntegracionesHubGrid />
+
+## Relación con otras áreas
+
+- **Producto**: [Flujos e integraciones](/producto/flujos-e-integraciones)
+- **API Reference**: [Introducción](/api-reference/intro)
+- **Guías de desarrollo** (landings, tRPC, componentes): [Guías de Desarrollo](/guias-desarrollo/intro)
+
+La **navegación principal** es el mapa de tarjetas (datos en `src/data/integracionesHub.ts`). El lateral resume **Orquestador**, fichas por proveedor y enlaces a API Reference; el detalle por capa sigue enlazado desde cada tarjeta.
