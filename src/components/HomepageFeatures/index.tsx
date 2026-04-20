@@ -12,6 +12,17 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
+    title: 'Documentación de Producto',
+    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    description: (
+      <>
+        Información sobre las funcionalidades del producto, módulos disponibles
+        y flujos de trabajo del sistema.
+      </>
+    ),
+    link: '/producto/intro',
+  },
+  {
     title: 'Arquitectura',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
@@ -43,17 +54,6 @@ const FeatureList: FeatureItem[] = [
       </>
     ),
     link: '/guias-desarrollo/intro',
-  },
-  {
-    title: 'Documentación de Producto',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-    description: (
-      <>
-        Información sobre las funcionalidades del producto, módulos disponibles
-        y flujos de trabajo del sistema.
-      </>
-    ),
-    link: '/producto/intro',
   },
 ];
 
