@@ -22,7 +22,7 @@ Mapa **orientado a desarrollo** de las rutas HTTP relevantes bajo `apps/next/src
 | `/api/shield/integrations/v1`, `v2` | Partners de integración (reclamos, usuarios, risk items, órdenes, etc.). |
 | `/api/postsales/v1` | Postventa del titular: OTP → JWT (`POSTSALES_JWT_*`), `me/risk-items`, CRUD acotado sobre risk items / beneficiarios / variantes. Ver [API Post-sales](./postsales-api.md). |
 | `/api/payments/silice` | Token y datos para el widget de pago (Silice / Reef). |
-| `/api/integrations` | **`dispatch`**: emisión orquestada con **service role**; **`retry`**: reintentos; **`post-sales`**: emisión post-cambio de datos con **JWT post-sales** y `post_sales_integration_slug` del paquete. |
+| `/api/integrations` | Entrada HTTP al **orquestador** de emisión: **`dispatch`** (emisión con **service role**), **`retry`** (reintentos), **`post-sales`** (emisión tras cambios con **JWT post-sales** y `post_sales_integration_slug`). Detalle del flujo: [Orquestador e integraciones](../arquitectura/orquestador-integraciones.md). |
 | `/api/processPayment` | Procesamiento de pagos (órdenes, suscripciones). |
 | `/api/workflows` | Evaluación de workflows, ejecución de webhooks de comunicación. Ver [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md). |
 | `/api/executeClientWebhooks` | Entrega hacia webhooks de clientes. |
@@ -64,8 +64,10 @@ Lógica desplegada fuera del proceso Next (cron, reportes, etc.) vive en `apps/n
 
 ## Referencias
 
+- [Orquestador e integraciones](../arquitectura/orquestador-integraciones.md) — **dispatch**, contrato `StandardRiskItem`, adaptadores, reintentos y diagramas.
 - [Shield (API nativa)](./shield/intro.md) — convenciones y buenas prácticas.
-- [Integraciones (arquitectura)](../arquitectura/integraciones.md) — adaptadores y orquestador.
+- [Integraciones (arquitectura)](../arquitectura/integraciones.md) — adaptadores y capa de integración en el monorepo.
 - [API Post-sales](./postsales-api.md) — OTP, JWT y `integrations/post-sales`.
+- [Payment widget (iframe)](../integraciones/payment-widget.md) — front aparte que consume `/api/payments/silice/token` y Reef por `postMessage`.
 - [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md) — workflows de reclamos, `/api/workflows` y skills de administración.
 - [Notificaciones, skills y Supabase Edge](../arquitectura/notificaciones-skills-supabase.md) — skill `notification.integration.error` y Edge Function.

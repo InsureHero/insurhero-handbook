@@ -1,6 +1,25 @@
 # Guías de Desarrollo
 
-Bienvenido a las guías de desarrollo de InsureHero. Esta sección contiene información práctica para desarrolladores que trabajan en el proyecto.
+Bienvenido a las guías de desarrollo de InsureHero. Aquí se concentra el **cómo**: entorno, convenciones de código, extensión del monorepo sin romper el núcleo, contratos TypeScript, APIs **Shield**, **tRPC**, componentes y el landing de postventa (Vidanta).
+
+## Qué hay en esta sección
+
+| Guía | Contenido |
+|------|-----------|
+| [Estructura base y extensión](./estructura-base-y-extension.md) | Qué partes son “base” estable, por dónde extender (adaptadores, rutas, tRPC) y anti‑patrones. |
+| [Interfaces y contratos TypeScript](./interfaces-y-contratos-typescript.md) | Dónde definir tipos, `InsuranceAdapter`, `StandardRiskItem`, Zod en bordes. |
+| [Nuevas rutas Shield](./nuevas-rutas-shield.md) | Checklist para endpoints bajo `/api/shield`, namespaces y versionado. |
+| [Guía de componentes](./componentes.md) | Componentes React, carpetas, formularios, estilos. |
+| [Guía de tRPC](./trpc.md) | Routers, procedimientos y uso en cliente. |
+| [Landing page Vidanta](./landing-page-postventa.md) | Repo aparte (`landing-next`), variables y flujo post‑sales. |
+
+### Orden de lectura recomendado
+
+1. Configuración del entorno (abajo) y [Estructura del monorepo](../arquitectura/estructura-monorepo.md).
+2. [Estructura base y extensión](./estructura-base-y-extension.md) + [Integraciones (código)](../arquitectura/integraciones.md) si trabajas con aseguradoras u orquestador.
+3. Según tu tarea: [Interfaces…](./interfaces-y-contratos-typescript.md), [Nuevas rutas Shield](./nuevas-rutas-shield.md), [tRPC](./trpc.md) o [Componentes](./componentes.md).
+
+La referencia **normativa** de las APIs (tablas, autenticación) sigue en **[API Reference](../api-reference/intro.md)**; estas guías son el **manual de trabajo** del repositorio.
 
 ## Configuración del Entorno
 
@@ -36,7 +55,7 @@ yarn dev
 
 ## Landing page Vidanta (repositorio aparte)
 
-El **landing de Vidanta** para titulares (OTP, viajeros, integración post-sales) vive en un proyecto **Next.js** fuera del monorepo principal. La documentación de producto y menú principal está en **[Integraciones → Canal Vidanta](../integraciones/vidanta)**; la [guía técnica detallada](./landing-page-postventa.md) enlaza desde ahí y mantiene el mismo menú lateral de Integraciones.
+El **landing de Vidanta** para titulares (OTP, viajeros, integración post-sales) vive en un proyecto **Next.js** fuera del monorepo principal. Contexto de negocio: **[Integraciones → Canal Vidanta](../integraciones/vidanta)**. La [guía técnica detallada](./landing-page-postventa.md) (estructura del repo, variables, comandos) está en esta misma sección.
 
 ## Estructura del Código
 

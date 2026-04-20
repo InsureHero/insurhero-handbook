@@ -1,3 +1,7 @@
+---
+displayed_sidebar: integracionesSidebar
+---
+
 # Orquestador y arquitectura de integraciones
 
 Esta página describe **cómo el orquestador conecta el core de InsureHero con sistemas externos** (aseguradoras y APIs), alineada con el diagrama de arquitectura del equipo y con el código en `apps/next/src/integrations/`. El objeto de negocio que se serializa hacia el orquestador es el **risk item** vía **`StandardRiskItem`**; contexto amplio en [Risk item](./risk-item.md).

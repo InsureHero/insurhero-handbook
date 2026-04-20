@@ -30,6 +30,10 @@ Integración con **Silice** como pasarela y el **widget Reef** para cobros con t
 - `apps/next/src/lib/reefWidget.ts`
 - `apps/next/src/components/pay/`, `apps/next/src/app/api/payments/`
 
+## Payment widget (iframe, repo aparte)
+
+Existe un proyecto **Next.js independiente** que embebe Silice + Reef en un **iframe** y habla con la app contenedora por **`postMessage`** (`IH_INIT_PAYMENT` / `IH_PAYMENT_RESULT`). Útil para landings u orquestadores fuera del monorepo que reutilizan el mismo token `/api/payments/silice/token`. Documentación: **[Payment widget](./payment-widget.md)**.
+
 ## Referencias
 
 - [Superficies REST](../api-reference/rest-superficies) (prefijos `/api/payments`, `processPayment`)

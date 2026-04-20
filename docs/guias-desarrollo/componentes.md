@@ -1,6 +1,21 @@
+---
+displayed_sidebar: guiasDesarrolloSidebar
+---
+
 # Guía de Componentes
 
-Guía para crear y usar componentes en InsureHero.
+Guía para crear y usar componentes en el front del monorepo principal (`apps/next`). Debe ir alineada con la [estructura base](./estructura-base-y-extension.md): **la UI no sustituye** reglas de negocio que correspondan al orquestador, adaptadores o APIs — solo las consume o las dispara vía tRPC / acciones de servidor según el diseño del feature.
+
+## Dónde colocar código nuevo
+
+| Tipo | Carpeta típica | Notas |
+|------|----------------|--------|
+| **Layout global** (cabecera, shell del dashboard) | `components/global/` | Cambios poco frecuentes; coordinar con diseño. |
+| **Feature** (pantalla de pólizas, reclamos, etc.) | `components/features/<feature>/` | Agrupar por dominio, no por tipo de archivo suelto. |
+| **Formularios reutilizables** | `components/forms/` | Patrones compartidos (RHF + Zod). |
+| **Primitivas UI** (botón, card, diálogo) | `src/ui/` o equivalente | Reutilizar antes de crear variantes one‑off. |
+
+Evita copiar **lógica de integración** (Phoenix, AMA, reglas de emisión) dentro de componentes presentacionales: eso pertenece a **servidor**, **tRPC** o **configuración** (paquete / canal), como describe [Integraciones (código)](../arquitectura/integraciones.md).
 
 ## Crear un Componente
 

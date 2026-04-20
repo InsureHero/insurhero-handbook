@@ -35,6 +35,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'arquitectura/orquestador-integraciones',
+      label: 'Orquestador e integraciones',
+    },
+    {
+      type: 'doc',
+      id: 'arquitectura/integraciones',
+      label: 'Integraciones (código)',
+    },
+    {
+      type: 'doc',
       id: 'arquitectura/autenticacion-autorizacion',
       label: 'Autenticación y Autorización',
     },
@@ -45,136 +55,84 @@ const sidebars: SidebarsConfig = {
     },
   ],
 
-  // Sidebar dedicado: integraciones — una categoría por sistema / capa
+  // Integraciones: navegación corta; el mapa de tarjetas (intro) es la guía principal
   integracionesSidebar: [
     {
       type: 'doc',
       id: 'integraciones/intro',
-      label: 'Introducción',
+      label: 'Mapa de integraciones',
+    },
+    {
+      type: 'doc',
+      id: 'arquitectura/orquestador-integraciones',
+      label: 'Orquestador e integraciones',
     },
     {
       type: 'category',
-      label: 'Plataforma común',
-      collapsed: false,
-      items: [
-        {
-          type: 'doc',
-          id: 'arquitectura/integraciones',
-          label: 'Integraciones (código)',
-        },
-        {
-          type: 'doc',
-          id: 'arquitectura/orquestador-integraciones',
-          label: 'Orquestador e integraciones',
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Phoenix',
+      label: 'Por proveedor o canal',
       collapsed: false,
       items: [
         {
           type: 'doc',
           id: 'integraciones/phoenix',
-          label: 'Ficha Phoenix',
+          label: 'Phoenix',
         },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'AMA',
-      collapsed: false,
-      items: [
         {
           type: 'doc',
           id: 'integraciones/ama',
-          label: 'Ficha AMA',
+          label: 'AMA',
         },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Pagos (Silice / Reef)',
-      collapsed: false,
-      items: [
         {
           type: 'doc',
           id: 'integraciones/silice-y-reef',
-          label: 'Ficha pagos',
+          label: 'Pagos (Silice / Reef)',
+        },
+        {
+          type: 'doc',
+          id: 'integraciones/payment-widget',
+          label: 'Payment widget (iframe)',
+        },
+        {
+          type: 'doc',
+          id: 'integraciones/capa-shield',
+          label: 'Shield',
+        },
+        {
+          type: 'doc',
+          id: 'integraciones/postventa-api-y-titular',
+          label: 'Postventa (titular)',
+        },
+        {
+          type: 'doc',
+          id: 'integraciones/vidanta',
+          label: 'Canal Vidanta',
+        },
+        {
+          type: 'doc',
+          id: 'integraciones/alertas-operacion',
+          label: 'Alertas y Supabase',
         },
       ],
     },
     {
       type: 'category',
-      label: 'Shield y APIs expuestas',
-      collapsed: false,
+      label: 'Referencias API en el handbook',
+      collapsed: true,
       items: [
-        {
-          type: 'doc',
-          id: 'integraciones/capa-shield',
-          label: 'Qué es Shield',
-        },
         {
           type: 'doc',
           id: 'api-reference/rest-superficies',
           label: 'Superficies REST',
         },
         {
-          type: 'link',
-          label: 'Shield API (API Reference)',
-          href: '/api-reference/shield/intro',
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Postventa (titular)',
-      collapsed: false,
-      items: [
-        {
-          type: 'doc',
-          id: 'integraciones/postventa-api-y-titular',
-          label: 'Resumen postventa',
-        },
-        {
           type: 'doc',
           id: 'api-reference/postsales-api',
-          label: 'API Post-sales (referencia)',
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Canal Vidanta',
-      collapsed: false,
-      items: [
-        {
-          type: 'doc',
-          id: 'integraciones/vidanta',
-          label: 'Qué es el canal Vidanta',
+          label: 'API Post-sales',
         },
         {
           type: 'link',
-          label: 'Guía técnica del landing (Next.js)',
-          href: '/guias-desarrollo/landing-page-postventa',
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Alertas y Supabase',
-      collapsed: false,
-      items: [
-        {
-          type: 'doc',
-          id: 'integraciones/alertas-operacion',
-          label: 'Discord y correo',
-        },
-        {
-          type: 'doc',
-          id: 'arquitectura/notificaciones-skills-supabase',
-          label: 'Skills y Edge Functions',
+          label: 'Shield (API Reference)',
+          href: '/api-reference/shield/intro',
         },
       ],
     },
@@ -252,8 +210,23 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'guias-desarrollo/estructura-base-y-extension',
+      label: 'Estructura base y extensión',
+    },
+    {
+      type: 'doc',
+      id: 'guias-desarrollo/interfaces-y-contratos-typescript',
+      label: 'Interfaces y contratos TypeScript',
+    },
+    {
+      type: 'doc',
+      id: 'guias-desarrollo/nuevas-rutas-shield',
+      label: 'Nuevas rutas Shield',
+    },
+    {
+      type: 'doc',
       id: 'guias-desarrollo/componentes',
-      label: 'Guía de Componentes',
+      label: 'Guía de componentes',
     },
     {
       type: 'doc',
@@ -261,8 +234,13 @@ const sidebars: SidebarsConfig = {
       label: 'Guía de tRPC',
     },
     {
+      type: 'doc',
+      id: 'guias-desarrollo/landing-page-postventa',
+      label: 'Landing Vidanta (postventa)',
+    },
+    {
       type: 'link',
-      label: 'Landing Vidanta (doc. en Integraciones)',
+      label: 'Canal Vidanta (contexto producto)',
       href: '/integraciones/vidanta',
     },
   ],
