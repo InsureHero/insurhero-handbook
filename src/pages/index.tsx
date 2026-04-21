@@ -1,43 +1,21 @@
 import type {ReactNode} from 'react';
-import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
-import HomepageFeatures from '@site/src/components/HomepageFeatures';
-import Heading from '@theme/Heading';
-
-import styles from './index.module.css';
-
-function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/arquitectura/intro">
-            Comenzar a leer 📚
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
+import Hero from '@site/src/components/home/Hero';
+import MainSections from '@site/src/components/home/MainSections';
+import GovernanceSection from '@site/src/components/home/GovernanceSection';
+import RecentChanges from '@site/src/components/home/RecentChanges';
 
 export default function Home(): ReactNode {
-  const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`${siteConfig.title} - Documentación`}
-      description="Documentación completa de InsureHero: Arquitectura, APIs, Guías de Desarrollo y Producto">
-      <HomepageHeader />
+      title="InsureHero Handbook"
+      description="Documentación técnica interna de la plataforma InsureHero: arquitectura, integraciones, APIs y guías de desarrollo."
+    >
       <main>
-        <HomepageFeatures />
+        <Hero />
+        <MainSections />
+        <GovernanceSection />
+        <RecentChanges />
       </main>
     </Layout>
   );

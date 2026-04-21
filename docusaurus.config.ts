@@ -23,19 +23,14 @@ const config: Config = {
   // Set the production url of your site here
   url: 'https://docs.insurehero.com',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'insurehero', // Usually your GitHub org/user name.
-  projectName: 'insurehero-docs', // Usually your repo name.
+  // Repo real en GitHub
+  organizationName: 'Trade-EC',
+  projectName: 'insurehero-handbook',
 
   onBrokenLinks: 'throw',
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -48,24 +43,9 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          // Remove this to remove the "edit this page" links.
-          // editUrl: 'https://github.com/insurehero/insurehero-docs/tree/main/',
+          editUrl: 'https://github.com/Trade-EC/insurehero-handbook/tree/main/',
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
-        },
+        blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -73,19 +53,54 @@ const config: Config = {
     ],
   ],
 
+  plugins: [
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        // Idiomas: español primero (idioma principal del handbook), inglés como fallback
+        language: ['es', 'en'],
+
+        // Qué indexar
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: true,
+
+        // Cache-busting de índice entre builds
+        hashed: 'filename',
+
+        // Mantener stopwords inglesas (términos técnicos como "the", "of" son relevantes)
+        removeDefaultStopWordFilter: ['en'],
+
+        // Resaltar términos encontrados al llegar a la página
+        highlightSearchTermsOnTargetPage: true,
+
+        // Límites de UX
+        searchResultLimits: 10,
+        searchResultContextMaxLength: 80,
+      },
+    ],
+    './src/plugins/recent-commits.ts',
+  ],
+
   themeConfig: {
-    // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     colorMode: {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'InsureHero',
       logo: {
-        alt: 'InsureHero Logo',
-        src: 'img/logo.svg',
+        alt: 'InsureHero',
+        src: 'img/insureLogo.svg',
+        width: 124,
+        height: 19,
       },
       items: [
+        {
+          type: 'docSidebar',
+          sidebarId: 'productoSidebar',
+          position: 'left',
+          label: 'Producto',
+        },
         {
           type: 'docSidebar',
           sidebarId: 'arquitecturaSidebar',
@@ -112,9 +127,9 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
-          sidebarId: 'productoSidebar',
+          sidebarId: 'gobernanzaSidebar',
           position: 'left',
-          label: 'Producto',
+          label: 'Gobernanza',
         },
       ],
     },
@@ -124,34 +139,49 @@ const config: Config = {
         {
           title: 'Documentación',
           items: [
+            {label: 'Arquitectura', to: '/arquitectura/intro'},
+            {label: 'Integraciones', to: '/integraciones/intro'},
+            {label: 'API Reference', to: '/api-reference/intro'},
+            {label: 'Guías de Desarrollo', to: '/guias-desarrollo/intro'},
+            {label: 'Producto', to: '/producto/intro'},
+          ],
+        },
+        {
+          title: 'Repositorios',
+          items: [
             {
-              label: 'Arquitectura',
-              to: '/arquitectura/intro',
+              label: 'Monorepo (insureHero)',
+              href: 'https://github.com/Trade-EC/insureHero',
             },
             {
-              label: 'Integraciones',
-              to: '/integraciones/intro',
-            },
-            {
-              label: 'API Reference',
-              to: '/api-reference/intro',
-            },
-            {
-              label: 'Guías de Desarrollo',
-              to: '/guias-desarrollo/intro',
-            },
-            {
-              label: 'Producto',
-              to: '/producto/intro',
+              label: 'Chatbot (por documentar)',
+              href: 'https://github.com/Trade-EC/insurehero-chatbot',
             },
           ],
         },
         {
-          title: 'Recursos',
+          title: 'Ambientes',
           items: [
             {
-              label: 'GitHub',
-              href: 'https://github.com/insurehero',
+              label: 'Producción',
+              href: 'https://app.insurehero.io/',
+            },
+            {
+              label: 'Sandbox',
+              href: 'https://sandbox.insurehero.io/',
+            },
+            {
+              label: 'Desarrollo',
+              href: 'https://develop.insurehero.io/',
+            },
+          ],
+        },
+        {
+          title: 'Infra',
+          items: [
+            {
+              label: 'Supabase (dev)',
+              href: 'https://supabase.com/dashboard/project/fqnzmrlgfedwrsblwedg',
             },
           ],
         },

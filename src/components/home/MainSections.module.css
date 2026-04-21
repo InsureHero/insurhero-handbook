@@ -1,0 +1,216 @@
+.section {
+  padding: 4rem 1rem 3rem;
+  background: var(--ifm-background-color);
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* Layout principal: Producto (izq) | Tech (der) — proporción 40/60 */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 2fr) minmax(480px, 3fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+/* ============================================
+   Elementos compartidos (headers de cada bloque)
+   ============================================ */
+.blockHeader {
+  margin-bottom: 1.25rem;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.blockTitle {
+  font-size: 1.625rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+  color: var(--ifm-heading-color);
+}
+
+/* ============================================
+   BLOQUE PRODUCTO (izquierda)
+   ============================================ */
+.productBlock {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  background: linear-gradient(
+    135deg,
+    var(--ifm-color-emphasis-100) 0%,
+    var(--ifm-color-emphasis-200) 100%
+  );
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.productBlock:hover {
+  text-decoration: none;
+  color: inherit;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.productDescription {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  color: var(--ifm-color-emphasis-800);
+  flex: 1;
+}
+
+.productDecor {
+  align-self: center;
+  color: #2463eb;
+  opacity: 0.7;
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 200 / 140;
+  margin: 1rem auto 1.25rem;
+}
+
+.productDecor svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.productCta {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #2463eb;
+}
+
+/* ============================================
+   BLOQUE TECH (derecha)
+   ============================================ */
+.techBlock {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 16px;
+}
+
+.techGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  flex: 1;
+}
+
+.techCard {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  background: var(--ifm-background-color);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.techCard:hover {
+  text-decoration: none;
+  color: inherit;
+  transform: translateY(-2px);
+  border-color: #2463eb;
+  box-shadow: 0 6px 18px rgba(36, 99, 235, 0.08);
+}
+
+.iconWrap {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(36, 99, 235, 0.1);
+  border-radius: 8px;
+  color: #2463eb;
+  margin-bottom: 0.75rem;
+}
+
+.iconWrap svg {
+  width: 20px;
+  height: 20px;
+}
+
+.techCardTitle {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.techCardDescription {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ifm-color-emphasis-700);
+  margin: 0;
+}
+
+/* ============================================
+   Dark mode
+   ============================================ */
+html[data-theme='dark'] .iconWrap {
+  background: rgba(91, 141, 239, 0.18);
+  color: #5b8def;
+}
+
+html[data-theme='dark'] .productCta,
+html[data-theme='dark'] .productDecor {
+  color: #5b8def;
+}
+
+html[data-theme='dark'] .techCard:hover {
+  border-color: #5b8def;
+  box-shadow: 0 6px 18px rgba(91, 141, 239, 0.12);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 2.5rem 1rem 2rem;
+  }
+  .productBlock,
+  .techBlock {
+    padding: 1.5rem;
+  }
+  .techGrid {
+    grid-template-columns: 1fr;
+  }
+  .blockTitle {
+    font-size: 1.375rem;
+  }
+}

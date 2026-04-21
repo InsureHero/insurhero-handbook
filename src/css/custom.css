@@ -135,3 +135,35 @@
   font-size: 0.95rem;
   color: var(--ifm-color-emphasis-800);
 }
+
+/* ========================================
+ * Modal de búsqueda — @easyops-cn/docusaurus-search-local
+ * Paleta alineada con el azul del handbook (#2463eb)
+ * ======================================== */
+:root {
+  --search-local-modal-width: 560px;
+  --search-local-modal-background: #ffffff;
+  --search-local-highlight-color: #2463eb;
+  --search-local-hit-active-color: #ffffff;
+  --search-local-hit-background: #f5f7fa;
+}
+
+html[data-theme='dark'] {
+  --search-local-modal-background: #1b1b1d;
+  --search-local-highlight-color: #5b8def;
+  --search-local-hit-background: #2a2a2e;
+}
+
+/* ============================================
+ * Logo del navbar
+ * El SVG es blanco por diseño; en light mode lo invertimos
+ * a oscuro mediante filtro para mantener contraste.
+ * ============================================ */
+.navbar__logo img {
+  filter: invert(1) brightness(0.2);
+  transition: filter 0.2s ease;
+}
+
+html[data-theme='dark'] .navbar__logo img {
+  filter: none;
+}

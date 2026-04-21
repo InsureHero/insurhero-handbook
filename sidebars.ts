@@ -354,6 +354,53 @@ const sidebars: SidebarsConfig = {
       ],
     },
   ],
+
+  // Sidebar para Gobernanza
+  gobernanzaSidebar: [
+    {
+      type: 'doc',
+      id: 'gobernanza/intro',
+      label: 'Introducción',
+    },
+    {
+      type: 'doc',
+      id: 'gobernanza/arquitectura-6-capas',
+      label: 'Arquitectura 6 Capas',
+    },
+    {
+      type: 'category',
+      label: 'Git',
+      collapsed: false,
+      items: [
+        'gobernanza/git/conventional-commits',
+        'gobernanza/git/ramas',
+        'gobernanza/git/ambientes',
+        'gobernanza/git/pre-commit-hooks',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Reglas de Cursor',
+      collapsed: false,
+      items: [
+        'gobernanza/reglas-cursor/intro',
+        'gobernanza/reglas-cursor/core-governance',
+        'gobernanza/reglas-cursor/architecture',
+        'gobernanza/reglas-cursor/security',
+        'gobernanza/reglas-cursor/monorepo',
+      ],
+    },
+    {
+      type: 'doc',
+      id: 'gobernanza/ciclo-de-vida',
+      label: 'Ciclo de Vida',
+    },
+    {
+      type: 'doc',
+      id: 'gobernanza/privacidad-y-datos',
+      label: 'Privacidad y Datos',
+    },
+  ],
 };
 
 export default sidebars;
