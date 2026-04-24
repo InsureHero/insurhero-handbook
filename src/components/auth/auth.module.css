@@ -1,0 +1,257 @@
+/* =====================================================
+ * Auth module — login, password recovery, guard overlay
+ * ===================================================== */
+
+.authShell {
+  min-height: calc(100vh - var(--ifm-navbar-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(
+    135deg,
+    var(--ifm-background-color) 0%,
+    var(--ifm-color-emphasis-100) 100%
+  );
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 14px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .card {
+  box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.6);
+  border-color: var(--ifm-color-emphasis-300);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ifm-heading-color);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+  margin: 0;
+  text-align: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--ifm-font-color-base);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primaryBtn {
+  margin-top: 0.25rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--ifm-color-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: var(--ifm-color-primary-dark);
+}
+
+.primaryBtn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ifm-color-primary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-decoration: none;
+  align-self: flex-end;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.linkBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.footerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.error {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+[data-theme='dark'] .error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.success {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #047857;
+  font-size: 0.88rem;
+}
+
+[data-theme='dark'] .success {
+  background: rgba(52, 211, 153, 0.12);
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.switcher {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+/* =====================================================
+ * Logout button — floating top-right
+ * ===================================================== */
+.logoutBtn {
+  position: fixed;
+  top: calc(var(--ifm-navbar-height) + 0.75rem);
+  right: 1rem;
+  z-index: 200;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--ifm-color-emphasis-900);
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.logoutBtn:hover {
+  background: var(--ifm-color-emphasis-100);
+  border-color: var(--ifm-color-emphasis-400);
+}
+
+.logoutBtn:active {
+  transform: translateY(1px);
+}
+
+[data-theme='dark'] .logoutBtn {
+  color: var(--ifm-color-emphasis-100);
+}
+
+[data-theme='dark'] .logoutBtn:hover {
+  background: var(--ifm-color-emphasis-200);
+}
+
+/* =====================================================
+ * Auth gate overlay — covers the page while resolving
+ * session or while redirecting unauthorized users.
+ * ===================================================== */
+.gateOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ifm-background-color);
+  transition: opacity 0.2s ease;
+}
+
+.gateSpinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--ifm-color-emphasis-300);
+  border-top-color: var(--ifm-color-primary);
+  animation: gateSpin 0.9s linear infinite;
+}
+
+@keyframes gateSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

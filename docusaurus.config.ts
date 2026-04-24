@@ -1,6 +1,9 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -30,6 +33,11 @@ const config: Config = {
   projectName: 'insurehero-handbook',
 
   onBrokenLinks: 'throw',
+
+  customFields: {
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY,
+  },
 
   i18n: {
     defaultLocale: 'en',
