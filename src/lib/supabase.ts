@@ -1,4 +1,14 @@
-import {createClient, type SupabaseClient} from '@supabase/supabase-js';
+/**
+ * @deprecated Este archivo existe temporalmente para compatibilidad durante
+ * la migracion de auth client-side (localStorage) a cookie-based (SSR).
+ *
+ * Nuevo codigo debe importar directamente desde `@site/src/lib/supabase/`:
+ *   import {getSupabaseBrowserClient} from '@site/src/lib/supabase/client';
+ *
+ * Este archivo sera eliminado en el Prompt 2/3 (refactor de AuthContext).
+ */
+import type {SupabaseClient} from '@supabase/supabase-js';
+import {createClient} from '@supabase/supabase-js';
 import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
 
 type SupabaseConfig = {
@@ -8,6 +18,10 @@ type SupabaseConfig = {
 
 let cachedClient: SupabaseClient | null = null;
 
+/**
+ * @deprecated Usar getSupabaseBrowserClient de '@site/src/lib/supabase/client'.
+ * Mantiene la firma original para que AuthContext.tsx siga funcionando sin cambios.
+ */
 export function getSupabaseClient(config: SupabaseConfig): SupabaseClient {
   if (!ExecutionEnvironment.canUseDOM) {
     throw new Error('Supabase client can only be used in the browser.');
