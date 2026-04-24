@@ -55,7 +55,17 @@ export default function AuthGate({children}: Props): React.ReactElement {
     }
 
     if (session && isLoginPath && !recoveryMode) {
-      history.replace('/');
+      // Read ?redirectTo from URL, set by edge middleware when redirecting
+      // unauthenticated requests to /login.
+      const params = new URLSearchParams(location.search);
+      const redirectTo = params.get('redirectTo');
+      // Validate it's an internal path (not an external URL) to prevent
+      // open redirect vulnerability.
+      const safeRedirect =
+        redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+          ? redirectTo
+          : '/';
+      history.replace(safeRedirect);
     }
   }, [loading, session, recoveryMode, pathPublic, isLoginPath, isResetPath, history]);
 
