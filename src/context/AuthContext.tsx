@@ -4,14 +4,13 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import type {AuthError, Session, SupabaseClient, User} from '@supabase/supabase-js';
+import type {AuthError, Session, User} from '@supabase/supabase-js';
 import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import {getSupabaseClient} from '@site/src/lib/supabase';
+import {getSupabaseBrowserClient} from '@site/src/lib/supabase/client';
 
 type AuthResult = {
   error: AuthError | null;
@@ -45,16 +44,16 @@ export function AuthProvider({children}: Props): React.ReactElement {
   const [loading, setLoading] = useState<boolean>(true);
   const [recoveryMode, setRecoveryMode] = useState<boolean>(false);
 
-  const clientRef = useRef<SupabaseClient | null>(null);
-
-  const getClient = useCallback((): SupabaseClient => {
-    if (!clientRef.current) {
-      clientRef.current = getSupabaseClient({
-        supabaseUrl: customFields.supabaseUrl,
-        supabasePublishableKey: customFields.supabasePublishableKey,
-      });
+  const getClient = useCallback(() => {
+    if (!customFields.supabaseUrl || !customFields.supabasePublishableKey) {
+      throw new Error(
+        'Missing Supabase credentials. Ensure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are defined in .env.',
+      );
     }
-    return clientRef.current;
+    return getSupabaseBrowserClient({
+      supabaseUrl: customFields.supabaseUrl,
+      supabaseAnonKey: customFields.supabasePublishableKey,
+    });
   }, [customFields.supabaseUrl, customFields.supabasePublishableKey]);
 
   useEffect(() => {
@@ -109,6 +108,10 @@ export function AuthProvider({children}: Props): React.ReactElement {
     const client = getClient();
     await client.auth.signOut();
     setRecoveryMode(false);
+    // Clean up legacy localStorage key from pre-cookie auth
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('insurehero-handbook.auth');
+    }
   }, [getClient]);
 
   const sendPasswordRecovery = useCallback<AuthContextValue['sendPasswordRecovery']>(
