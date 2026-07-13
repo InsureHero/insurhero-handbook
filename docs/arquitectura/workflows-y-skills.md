@@ -46,6 +46,8 @@ Además del workflow de negocio del reclamo, el dashboard incorpora un **builder
 
 Cada operación del core escribe el evento en `event_outbox` **en la misma transacción** que la op, de modo que no se pierde un evento si el proceso muere entre el commit y la emisión. Un worker (**drain**) drena el outbox, resuelve los `flow_triggers` que matchean `(canal, evento)` y **encola un run por flow** (vía QStash). Es best-effort e idempotente: varios drains en paralelo no reprocesan (claim con `SKIP LOCKED` y visibility timeout).
 
+El drain se dispara de forma **reactiva**: un trigger sobre `event_outbox` publica un *poke* (vía `pg_net` → QStash, con deduplicación por ventana de ~10 s para colapsar ráfagas en una sola llamada) que ejecuta el drain en segundos, sin esperar a un cron. Un **Vercel Cron cada 5 min** queda como red de seguridad. Los secretos del poke viven en Supabase Vault; si faltan, el poke es no-op best-effort y no afecta la operación del core (el cron drena igual).
+
 ### Nodos
 
 | Grupo | Nodos |
