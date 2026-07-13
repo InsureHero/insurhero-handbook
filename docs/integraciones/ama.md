@@ -20,7 +20,8 @@ Integración con el ecosistema **AMA / MIA Assistance** para altas y operaciones
 | **Handler / origen** | `AMA_HANDLER` (p. ej. `INSUREHERO`) identifica al integrador ante AMA — invariante global, no por canal. |
 | **Titular** | Constantes de tipo holder y titular de póliza acordes al modelo AMA (`AMA_HOLDER_TYPE`, `AMA_POLICY_HOLDER`). |
 | **Beneficiarios** | Mapeo explícito `mapBeneficiariesToAma` desde el risk item. |
-| **Alta y baja** | `emit(data, { operation })`: `"EMIT"` da de alta holders, `"CANCEL"` los da de baja. Si no hay emisión previa o ya estaba cancelado, devuelve estado **`SKIPPED`** (éxito, sin llamar a AMA). La baja fallida se reintenta vía el cron `ama-cancel-retry`. |
+| **Alta y baja** | `emit(data, { operation })`: `"EMIT"` da de alta holders, `"CANCEL"` los da de baja. La **idempotencia vive en la capa de orquestación** (post-sales): consulta la última operación exitosa en `integration_emissions` y no vuelve a llamar a AMA si ya coincide con el evento, así que el adapter actúa como proxy sin estado. Los reintentos de una baja fallida los cubren el **ciclo de cobros** y la cola de post-sales (QStash) — no un cron dedicado. |
+| **Ciclo de pagos** | Al **primer** fallo de pago de una orden, el beneficiario se da de **baja temprana** en AMA aunque el risk item siga `active`. Si el pago se regulariza más tarde, se dispara una **re-alta** automática (`EMIT`). |
 | **Configuración** | Tabla **`integrations`**, `slug = 'AMA'`, **`auth_config`** con `handler` + `channels[]` (secretos y parámetros por canal). |
 
 ## Qué hace InsureHero

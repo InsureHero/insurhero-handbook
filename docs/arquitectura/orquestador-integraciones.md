@@ -39,7 +39,7 @@ Abajo está la **imagen de referencia del equipo**. **Haz clic en la imagen o en
   </div>
 </details>
 
-_Los bloques “Adaptador X / Y / Z” en el diagrama representan **proveedores adicionales** que se pueden registrar en el mismo patrón; en el repositorio actual el registro incluye **Phoenix** y **AMA** (ver [Registro de adaptadores](#registro-de-adaptadores))._
+_Los bloques “Adaptador X / Y / Z” en el diagrama representan **proveedores adicionales** que se pueden registrar en el mismo patrón; en el repositorio actual el registro incluye **Phoenix**, **AMA** y **MAWDY Mail** (ver [Registro de adaptadores](#registro-de-adaptadores))._
 
 ## Secuencia resumida (ventas → dispatch)
 
@@ -88,7 +88,8 @@ Cualquier nueva integración debe **rellenar o transformar hacia** este contrato
 | Slug | Clase | Notas |
 |------|--------|--------|
 | `PHOENIX` | `PhoenixAdapter` | Lee `auth_config` de `integrations` donde `slug = 'PHOENIX'`. |
-| `AMA` | `AmaAdapter` | Lee `auth_config` donde `slug = 'AMA'`. |
+| `AMA` | `AmaAdapter` | Lee `auth_config` donde `slug = 'AMA'`; multi-canal vía `auth_config.channels[]` (ver [AMA](../integraciones/ama.md)). |
+| `MAWDY_MAIL` | `MawdyMailAdapter` | Envía **correo transaccional** (p. ej. welcome pack) vía la API de MAWDY con Cognito `client_credentials`. No emite pólizas: renderiza una plantilla con datos del `StandardRiskItem`. Config por canal en `auth_config`. |
 
 Añadir **Adapter X / Y** en el diagrama equivale a: implementar `InsuranceAdapter`, registrar en `ADAPTERS` y configurar filas en la tabla **`integrations`** en Supabase.
 
@@ -121,6 +122,12 @@ En ambos casos, el adaptador traduce **`StandardRiskItem` → API externa** y **
 8. Actualiza **`risk_items.metadata.integration`** con estado, `externalId`, `emissionId` y error.
 
 Esto materializa en código el esquema del diagrama: **Orquestador → Integraciones → Contrato emitido** o **Manejador de errores → Discord + pila de fallidos / reintentos**.
+
+### Dispatch v2 (disparo por orden creada)
+
+Junto al dispatch de ventas (disparado por el risk item), existe **`POST /api/integrations/dispatch-v2`**, para emisiones ligadas a la **creación de una orden**. Un trigger `AFTER INSERT ON orders` publica (vía `pg_net`) hacia este endpoint cuando la orden debe disparar una integración —por ejemplo el correo de bienvenida (`MAWDY_MAIL`) en el evento `POLICY_CREATED`—. El endpoint tiene dos modos, **inicial** (por `order_id`) y **reintento** (por `emission_id`), y en ambos delega en `orchestrateInsuranceEmission`.
+
+Para permitir varias emisiones por risk item según el hecho que las dispara, `integration_emissions` incorpora una columna **`event`** y su unicidad pasa a ser **`(risk_item_id, provider, event)`** (el dispatch v1 y post-sales resuelven conflictos por esa misma clave).
 
 ### Postventa (JWT post-sales)
 
