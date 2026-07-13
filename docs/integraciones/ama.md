@@ -15,19 +15,19 @@ Integración con el ecosistema **AMA / MIA Assistance** para altas y operaciones
 
 | Aspecto | Detalle |
 |---------|---------|
-| **Multi-canal** | `auth_config.channels[]`: cada canal (p. ej. Vidanta/MX, Carrefour/ES) trae sus propias credenciales, URLs, país (`country_id`) y contratos. El adaptador resuelve el bloque por el **`channel_id`** del risk item; si el canal no está configurado o su bloque es inválido, la emisión falla de forma terminal (`CHANNEL_NOT_CONFIGURED` / `INVALID_CHANNEL_CONFIG`, sin reintento). |
+| **Multi-canal** | `auth_config.channels[]`: cada canal (p. ej. Vidanta/MX, Carrefour/ES) trae sus propias credenciales, URLs, país (`country_id`) y contratos. El adaptador resuelve el bloque por el **`channel_id`** del risk item; si el canal no está configurado o su bloque es inválido, la emisión falla con `CHANNEL_NOT_CONFIGURED` / `INVALID_CHANNEL_CONFIG`. |
 | **Autenticación** | OAuth2 client-credentials; `auth_url` y `base_url` **por canal** (ya no por variable de entorno). |
 | **Handler / origen** | `AMA_HANDLER` (p. ej. `INSUREHERO`) identifica al integrador ante AMA — invariante global, no por canal. |
 | **Titular** | Constantes de tipo holder y titular de póliza acordes al modelo AMA (`AMA_HOLDER_TYPE`, `AMA_POLICY_HOLDER`). |
 | **Beneficiarios** | Mapeo explícito `mapBeneficiariesToAma` desde el risk item. |
-| **Alta y baja** | `emit(data, { operation })`: `"EMIT"` da de alta holders, `"CANCEL"` los da de baja. La **idempotencia vive en la capa de orquestación** (post-sales): consulta la última operación exitosa en `integration_emissions` y no vuelve a llamar a AMA si ya coincide con el evento, así que el adapter actúa como proxy sin estado. Los reintentos de una baja fallida los cubren el **ciclo de cobros** y la cola de post-sales (QStash) — no un cron dedicado. |
+| **Alta y baja** | `emit(data, { event })`: `"EMIT"` da de alta holders, `"CANCEL"` los da de baja. La **idempotencia vive en la capa de orquestación** (post-sales): consulta la última operación exitosa en `integration_emissions` y no vuelve a llamar a AMA si ya coincide con el evento, así que el adapter actúa como proxy sin estado. Los reintentos de una baja fallida los cubren el **ciclo de cobros** y la cola de post-sales (QStash) — no un cron dedicado. |
 | **Ciclo de pagos** | Al **primer** fallo de pago de una orden, el beneficiario se da de **baja temprana** en AMA aunque el risk item siga `active`. Si el pago se regulariza más tarde, se dispara una **re-alta** automática (`EMIT`). |
 | **Configuración** | Tabla **`integrations`**, `slug = 'AMA'`, **`auth_config`** con `handler` + `channels[]` (secretos y parámetros por canal). |
 
 ## Qué hace InsureHero
 
 1. Carga **`auth_config`** de la fila AMA en Supabase y **resuelve el bloque del canal** (`channel_id`) dentro de `channels[]`.
-2. Según `operation`, construye peticiones de **alta** (create/update de holders) o **baja** según el contrato AMA del canal.
+2. Según el `event`, construye peticiones de **alta** (create/update de holders) o **baja** según el contrato AMA del canal.
 3. Devuelve `EmissionResponse` al orquestador; el flujo de **dispatch** / **post-sales** registra intentos y errores como con Phoenix.
 
 ## Dónde está en el repo
