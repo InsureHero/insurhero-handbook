@@ -28,6 +28,8 @@ Para el contrato exacto que consume el orquestador, el código define **`Standar
 4. **Postventa del titular** — OTP, JWT y rutas **`/api/postsales/v1/...`** operan sobre risk items donde el email es titular; la RPC **`postsales_risk_item_ids_by_holder_email`** acota elegibilidad.
 5. **Reclamos** — Los siniestros se anclan al contexto del contrato; las rutas Shield de **`.../claims`** y **`.../claims/[id]/workflow`** conviven con el mismo modelo de dominio.
 
+**Cancelación según fecha** — La ruta Shield `.../risk-items/[riskItemId]/cancel` interpreta la fecha de baja a **nivel de día (UTC)**: si es **hoy** (o el literal `"cancel"`), el risk item pasa a `CANCELLED` de inmediato, se registra en el historial de estados y se encola la notificación al carrier; si es una **fecha futura**, solo se guarda el `end_date` y el ciclo diario lo cancela cuando llegue; una **fecha pasada** se rechaza (`422`). Cancelar algo ya cancelado es idempotente.
+
 Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integraciones.md).
 
 ## Dónde se expone en la plataforma
