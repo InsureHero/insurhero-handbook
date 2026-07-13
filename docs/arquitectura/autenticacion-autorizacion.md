@@ -6,7 +6,7 @@ InsureHero utiliza Supabase Auth para la gestión de autenticación y autorizaci
 
 ### Autenticación de Usuarios
 
-1. **Login**: Los usuarios se autentican a través de Supabase Auth
+1. **Login**: Los usuarios se autentican con **email + contraseña** a través de Supabase Auth. El **social login (Google/OAuth) está deshabilitado** por política de seguridad: el único método de acceso al dashboard es email/contraseña.
 2. **Sesión**: Se mantiene una sesión JWT
 3. **Middleware**: Next.js middleware valida la sesión en cada request
 
@@ -51,8 +51,8 @@ El middleware de Next.js maneja:
 
 ### Dashboard (Interno)
 
-- `/api/auth/callback`: Callback de OAuth
-- Autenticación manejada por Supabase Auth Helpers
+- Autenticación por **email + contraseña**, gestionada por Supabase Auth.
+- **Sin callback de OAuth**: el social login está deshabilitado y el proveedor Google está apagado en todos los ambientes.
 
 ### Shield API (Externa)
 
