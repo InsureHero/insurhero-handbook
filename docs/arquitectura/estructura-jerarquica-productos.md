@@ -243,11 +243,14 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
 - **Markup (markup - JSONB)**:
   - Margen de ganancia adicional
   - Puede contener múltiples niveles de markup
+  - Cada entrada tiene un `owner` (`channel` / `platform` / `insurer` / `broker`) que identifica al actor que cobra el margen. En el pricing de la orden los markups se agregan **por owner** (`markups_details`) y se mantienen separados de los impuestos legales (`taxes_details`).
+  - Cada entrada puede ser un **monto fijo** o una **tasa** (`is_rate: true`, porcentaje sobre el `gross_price` de la variante).
   - Ejemplo:
     ```json
     [
       {
         "name": "Markup Canal",
+        "owner": "channel",
         "gross_price": "50"
       }
     ]

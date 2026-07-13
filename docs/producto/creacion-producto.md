@@ -203,14 +203,18 @@ Array de objetos donde cada impuesto puede ser:
 
 #### 3. `markup` (jsonb - array de márgenes)
 
-Array de objetos que representan márgenes de ganancia adicionales.
+Array de objetos que representan márgenes de ganancia adicionales. Cada markup pertenece a un **`owner`** (`channel`, `platform`, `insurer` o `broker`) que identifica al actor que cobra ese margen sobre la prima. En el pricing de la orden los markups se agregan **por owner** y se mantienen separados de los impuestos legales de la variante.
+
+Un markup puede expresarse como **monto fijo** o como **tasa**: si `is_rate` es `true`, el valor se interpreta como un porcentaje sobre el `gross_price` de la variante y el sistema calcula el monto resultante; si es `false` o está ausente, `gross_price` es un monto fijo. Los `taxes` dentro de un markup **no** son impuestos legales, sino los componentes del propio markup.
 
 **Ejemplo:**
 ```json
 [
   {
     "name": "Markup Canal",
+    "owner": "channel",
     "gross_price": "100",
+    "is_rate": false,
     "taxes": [
       {
         "name": "IVA Markup",
