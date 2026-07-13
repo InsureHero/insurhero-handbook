@@ -2,9 +2,6 @@ import React, {type ReactNode, useEffect} from 'react';
 import {useLocation} from '@docusaurus/router';
 import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
 import type {Zoom} from 'medium-zoom';
-import {AuthProvider} from '@site/src/context/AuthContext';
-import AuthGate from '@site/src/components/auth/AuthGate';
-import LogoutButton from '@site/src/components/auth/LogoutButton';
 
 type Props = {
   readonly children: ReactNode;
@@ -51,10 +48,9 @@ function MediumZoomEffect(): null {
 
 export default function Root({children}: Props): ReactNode {
   return (
-    <AuthProvider>
+    <>
       <MediumZoomEffect />
-      <AuthGate>{children}</AuthGate>
-      <LogoutButton />
-    </AuthProvider>
+      {children}
+    </>
   );
 }
