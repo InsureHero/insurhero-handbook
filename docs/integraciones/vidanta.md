@@ -19,6 +19,7 @@ displayed_sidebar: integracionesSidebar
 | **i18n** | Interfaz en **EN / ES**. |
 | **Estado de sesión** | JWT post-sales en `sessionStorage` (clave histórica `shield_access_token`). |
 | **Sincronización** | Tras persistir beneficiarios, `post_sales.service` envía el risk item al orquestador con acciones `create` / `edit` por beneficiario. |
+| **Tope de beneficiarios** | El máximo de beneficiarios que se pueden dar de alta se limita **por contrato**, resuelto desde la configuración del canal en Supabase (no un valor fijo en la landing). Al alcanzar el tope, la landing deshabilita el alta de nuevos beneficiarios. |
 
 ## Qué hace InsureHero (backend)
 
