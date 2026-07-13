@@ -67,6 +67,26 @@ Migración de referencia: `supabase/migrations/20260406070000_schedule_daily_emi
 - El cron configurado en esa migración ejecuta **cada hora** (`0 * * * *`) una llamada POST; el cuerpo JSON puede incluir `environment_label` según secretos en Vault.
 - Ajustes de horario o frecuencia implican cambiar la expresión cron y/o la lógica de “ventana local” dentro del reporte (timezone del canal en `channels.timezone`).
 
+## Bucket de Storage `mails` (assets de correos)
+
+Los correos transaccionales al cliente sirven sus imágenes e iconos desde un bucket **público** de Supabase Storage llamado **`mails`**, en lugar de adjuntarlos por CID. Migración de referencia: `supabase/migrations/20260615130000_create_mails_storage_bucket.sql`.
+
+| Propiedad | Valor |
+|-----------|-------|
+| `public` | `true` (lectura anónima por URL, sin signed URLs) |
+| `file_size_limit` | 10 MB por objeto |
+| `allowed_mime_types` | `image/jpeg`, `image/png` |
+
+- La migración es idempotente (`on conflict do update`). No hay policies sobre `storage.objects`: la lectura la cubre `public = true` y la escritura se hace desde backend con `service_role`.
+
+## Templates de correo al cliente (bienvenida)
+
+Además de los correos operativos (reporte diario por skill), el sistema envía **correos transaccionales al cliente** a partir de plantillas HTML pre-renderizadas:
+
+- Los templates viven en `apps/next/src/app/mails/templates/<partner>/<archivo>.html` (p. ej. `carrefour/welcome-essential.html`) y se cargan en runtime con `loadTemplateHtml(partner, templateFile)`.
+- Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
+- El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
+
 ## Notificaciones en la app Next (Discord)
 
 Fuera de Supabase, fallos reintentables o abandonados en el flujo de **emisiones de integración** pueden notificarse a **Discord** vía webhook:
