@@ -261,6 +261,11 @@ const sidebars: SidebarsConfig = {
       label: 'Landing Vidanta (postventa)',
     },
     {
+      type: 'doc',
+      id: 'guias-desarrollo/riskbench',
+      label: 'RiskBench (laboratorio de pruebas)',
+    },
+    {
       type: 'link',
       label: 'Canal Vidanta (contexto producto)',
       href: '/integraciones/vidanta',
