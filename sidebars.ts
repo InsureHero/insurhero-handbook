@@ -108,6 +108,11 @@ const sidebars: SidebarsConfig = {
           label: 'Canal Vidanta',
         },
         {
+          type: 'doc',
+          id: 'integraciones/fenicio',
+          label: 'Fenicio (experimental)',
+        },
+        {
           type: 'category',
           label: 'Ficheros Carrefour (MAPFRE)',
           collapsed: true,

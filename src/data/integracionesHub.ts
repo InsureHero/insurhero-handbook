@@ -113,6 +113,14 @@ export const integracionesHubItems: IntegracionHubItem[] = [
     ],
   },
   {
+    id: 'fenicio',
+    title: 'Fenicio (experimental)',
+    description:
+      'POC de solo lectura contra la API de Fenicio (orders y stocks) vía rutas Shield. Dev-only, aún no persiste en el modelo del core.',
+    ficha: {label: 'Ficha Fenicio', to: '/integraciones/fenicio'},
+    apis: [{label: 'Shield · inventario de rutas', to: '/api-reference/shield/inventario-de-rutas'}],
+  },
+  {
     id: 'carrefour-ficheros',
     title: 'Ficheros Carrefour (MAPFRE)',
     description:

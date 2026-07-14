@@ -69,6 +69,7 @@ Listado **orientado a desarrollo**, agrupado por **dominio**. Las rutas reales i
 | `.../integrations/webhooks`, `.../webhooks/[webhookId]` | `v1`, `ia/v1` |
 | `.../orders/[riskItemId]` | `integrations/v1` |
 | `.../orders` (listado por **rango de fechas** de creación; `start_date`/`end_date` obligatorios, `status` opcional, paginación `from`/`to`, cap de 6 meses) | `v1` |
+| `.../fenicio/orders`, `.../fenicio/orders/[id]`, `.../fenicio/stocks` (lectura Fenicio, **experimental / dev-only** — ver [Fenicio](../../integraciones/fenicio.md)) | `integrations/v1` |
 
 ## Otros
 
