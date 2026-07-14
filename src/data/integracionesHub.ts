@@ -113,6 +113,16 @@ export const integracionesHubItems: IntegracionHubItem[] = [
     ],
   },
   {
+    id: 'carrefour-ficheros',
+    title: 'Ficheros Carrefour (MAPFRE)',
+    description:
+      'Exportación de la cartera Carrefour a MAPFRE como ficheros (EIAC, RIC, SSAA/OPEN_SYSTEMS, MIC, pagos) generados por orden y despachados por SFTP.',
+    ficha: {label: 'Pipeline y despacho', to: '/integraciones/carrefour-ficheros/intro'},
+    flujos: [
+      {label: 'Familias de ficheros y slugs', to: '/integraciones/carrefour-ficheros/familias'},
+    ],
+  },
+  {
     id: 'vidanta',
     title: 'Canal Vidanta',
     description: 'Landing y experiencia del canal; sincronización con integraciones tras cambios.',

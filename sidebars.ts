@@ -108,6 +108,23 @@ const sidebars: SidebarsConfig = {
           label: 'Canal Vidanta',
         },
         {
+          type: 'category',
+          label: 'Ficheros Carrefour (MAPFRE)',
+          collapsed: true,
+          items: [
+            {
+              type: 'doc',
+              id: 'integraciones/carrefour-ficheros/intro',
+              label: 'Pipeline y despacho',
+            },
+            {
+              type: 'doc',
+              id: 'integraciones/carrefour-ficheros/familias',
+              label: 'Familias de ficheros',
+            },
+          ],
+        },
+        {
           type: 'doc',
           id: 'integraciones/alertas-operacion',
           label: 'Alertas y Supabase',
