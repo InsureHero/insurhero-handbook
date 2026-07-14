@@ -71,7 +71,7 @@ Editar un flow activo es seguro por construcción: el builder edita siempre un *
 
 - **Save** escribe solo el draft; el runner sigue con la versión viva.
 - **Publish** valida el DAG (exactamente un trigger, nodos alcanzables desde él, sin ciclos) y, si pasa, crea una fila en `flow_versions` (historial append-only, `version_number` incremental) y activa esa definición.
-- **Activate / Deactivate** arma o desarma el trigger; es **ortogonal** a publish (un flow puede estar activo con *cambios sin publicar*). Activar exige tener una versión publicada.
+- **Activate / Deactivate** arma o desarma el trigger; es **ortogonal** a publish (un flow puede estar activo con *cambios sin publicar*). Activar exige tener una versión publicada. Al activar un flow de evento con **eventos pendientes** en el outbox, la UI avisa del número que se procesará (para no reprocesar historia). En **desarrollo** existe además una acción *Clear backlog & activate* que **descarta** esos pendientes antes de activar; está **bloqueada en producción** (es una ayuda de dev, no una operación de negocio).
 - **Rollback**: carga una versión anterior al draft para revisarla y publicarla como versión nueva (historial lineal).
 - **Review changes / Compare**: diff estructural (nodos y conexiones agregados / quitados / cambiados) antes de publicar o restaurar.
 
