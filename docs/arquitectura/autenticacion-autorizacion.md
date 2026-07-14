@@ -38,6 +38,29 @@ El sistema maneja diferentes roles:
 - **Agent**: Acceso limitado a funcionalidades específicas
 - **User**: Usuario final con acceso básico
 
+### Privilegios granulares (por admin y canal)
+
+Además del rol, cada administrador tiene un conjunto de **privilegios granulares** definidos **por canal**: se guardan como un JSONB en la columna **`admins_by_channels.privileges`**. Así, la misma persona puede tener capacidades distintas en cada canal al que pertenece.
+
+Los privilegios son **flags booleanos** agrupados por dominio funcional del dashboard:
+
+| Dominio | Ejemplos de privilegios |
+|---------|-------------------------|
+| Usuarios / grupos / agentes | `can_view_users`, `can_create_users`, `can_edit_users`, `can_view_agents`, `can_create_or_modify_agents` |
+| Reclamos | `can_view_all_claims`, `can_create_claims`, `can_edit_claims` |
+| Risk items | `can_view_risk_items`, `can_create_risk_items`, `can_edit_risk_items`, `can_view_events`, **`can_download_risk_items`** |
+| Pólizas / paquetes | `can_view_policies`, `can_create_policies`, `can_edit_policies`, `can_view_packages` |
+| Workflows / acciones | `can_view_workflows`, `can_create_workflows`, `can_edit_workflows`, `can_view_actions`, … |
+| Plantillas de email | `can_view_emails_templates`, `can_create_emails_templates`, `can_edit_emails_templates` |
+| Ajustes de canal / skills | `can_modify_channel_settings`, `can_create_or_modify_skills` |
+
+Cómo se aplican:
+
+- **Visibilidad de páginas**: un mapa privilegio→página (`pageAccessMap`) decide qué secciones del dashboard ve el admin; las que no tiene habilitadas se ocultan.
+- **Acciones puntuales**: privilegios específicos gatean operaciones concretas. Por ejemplo, **`can_download_risk_items`** habilita la **exportación / descarga de risk items** en el backoffice.
+- **Bypass de super-admin**: un **`SUPER_ADMIN`** salta la comprobación de privilegios (y de canal) — ve y puede todo, sin depender de la lista.
+- Los privilegios del admin en sesión se cargan en el cliente (procedimiento tRPC `agents.selectAgentLoggedIn`) y se asignan desde la gestión de agentes/usuarios.
+
 ## Middleware
 
 El middleware de Next.js maneja:
