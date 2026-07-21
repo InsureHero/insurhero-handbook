@@ -62,6 +62,23 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
 
+## Numeración para MAPFRE (`carrier_external_ids`)
+
+Los UIDs de InsureHero son alfanuméricos, pero los ficheros de MAPFRE necesitan **números** (número de póliza y número de recibo). La tabla **`carrier_external_ids`** guarda ese mapeo 1:1 entre el UID de InsureHero y su número externo:
+
+- Cada fila lleva `entity_type` (`'risk_item'` → número de **póliza**, `'order'` → número de **recibo**), `entity_id` (el UID), `external_id` (el número asignado), `channel_id` y `created_at`. El constraint `UNIQUE (entity_type, entity_id)` fuerza **un solo** número por entidad y tipo.
+- Los números se **acuñan bajo demanda** vía la RPC **`get_or_assign_external_id`** (`SECURITY DEFINER`), que la generación de ficheros invoca por orden. Es la **única** vía de escritura; corre con service-role y por eso **bypassea RLS**. Ninguna lectura acuña números: los helpers de solo-lectura devuelven `null` si aún no hay mapeo.
+
+### Visibilidad en el dashboard
+
+El detalle del risk item en el backoffice expone este mapeo para soporte y trazabilidad (p. ej. "¿con qué póliza/recibo MAPFRE quedó mi risk item X?"):
+
+- En el **Overview** del risk item, la tarjeta **Carrier External IDs** muestra el nombre del carrier/canal, el **número de póliza**, su fecha de asignación y la lista de **recibos** (números de las órdenes asociadas, en orden de creación). Una orden sin número asignado todavía se lista con `-`. Si el risk item no tiene número de póliza propio (p. ej. canales que no usan esta tabla), la tarjeta **no se renderiza**.
+- La cabecera del detalle muestra además el número de póliza como badge cuando existe.
+- Los datos los sirve el procedure tRPC `riskItems.getCarrierExternalIds`, scopeado por `channel_id` (nunca cruza datos entre canales).
+
+Para que el rol `authenticated` del dashboard pueda leer la tabla (antes solo la escribía la RPC con service-role), hay **policies de SELECT** sobre `carrier_external_ids`: un admin lee las filas de **sus** canales (vía `admins_by_channels`) y `SUPER_ADMIN` lee todas — mismo patrón channel-scoped + bypass que `order_events`. No hay policies de INSERT/UPDATE/DELETE: la escritura sigue siendo exclusiva de `get_or_assign_external_id`.
+
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:

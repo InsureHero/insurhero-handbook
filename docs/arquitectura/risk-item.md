@@ -15,7 +15,7 @@ A alto nivel, un risk item combina:
 - **Contexto de canal** — Misma moneda, país y políticas que definiste al crear el canal. El campo **`timezone`** (IANA) del canal importa para reportes y skills que usan ventanas en hora local; ver [Notificaciones, skills y Supabase Edge](./notificaciones-skills-supabase.md).
 - **Selección comercial** — Paquete y variantes que aplican a ese contrato en curso, alineadas con `sales_integration_slug` / `post_sales_integration_slug` cuando hay emisión hacia Phoenix, AMA u otro proveedor.
 - **Personas** — Titular (beneficiario titular), **beneficiarios**, **authorized_claimants** (quién puede reclamar o actuar en postventa según reglas).
-- **Integración** — Tras el dispatch u operaciones de postventa, suele reflejarse estado en **`risk_items.metadata.integration`** (por ejemplo identificadores externos, errores, reintentos), coherente con la tabla **`integration_emissions`**.
+- **Integración** — Tras el dispatch u operaciones de postventa, suele reflejarse estado en **`risk_items.metadata.integration`** (por ejemplo identificadores externos, errores, reintentos), coherente con la tabla **`integration_emissions`**. Para carriers que trabajan con números (no UIDs), el mapeo póliza/recibo vive aparte en `carrier_external_ids` y se expone en el detalle del dashboard; ver [Ficheros Carrefour (MAPFRE)](../integraciones/carrefour-ficheros/intro.md).
 - **Identidad estable** — Un **`uid`** u otras referencias útiles para trazas entre sistemas (logs, adaptadores, soporte).
 
 Para el contrato exacto que consume el orquestador, el código define **`StandardRiskItem`** (ver [Orquestador e integraciones](./orquestador-integraciones.md)): es la forma canónica de serializar “este risk item” para **`adapter.emit(...)`**.
