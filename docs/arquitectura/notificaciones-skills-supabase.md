@@ -87,6 +87,46 @@ Además de los correos operativos (reporte diario por skill), el sistema envía 
 - Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
 - El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
 
+### PDF de condiciones particulares (adjunto cifrado)
+
+Además del cuerpo HTML, el welcome pack puede llevar adjunto un **PDF de condiciones particulares** de la póliza, personalizado por riskItem y **cifrado**. Hoy aplica a los packages con plantilla de **Carrefour “Cesta de la Compra”** (**Premium** y **Esencial**); “Compra protegida” aún no tiene plantilla.
+
+Es un flujo **dirigido por config**: cada package del evento en la row **`MAWDY_MAIL`** de `integrations` (columna `config`) trae un array **`attachments`**, y cada entrada define:
+
+| Campo | Rol |
+|-------|-----|
+| `bucket_path` | Ruta de la plantilla PDF origen en Storage (admite `{channel_id}`); el primer segmento del path es el bucket. |
+| `save_to` | Carpeta destino del PDF generado (admite `{risk_item_id}`, p. ej. `riskItems/{risk_item_id}/`); primer segmento = bucket. |
+| `rename_to` | Nombre del fichero de salida (p. ej. `CondicionesParticulares.pdf`). |
+| `password` | Expresión de dato que se resuelve contra el riskItem/order para cifrar el PDF (p. ej. `riskItem.insured_subject.identifier_value`). |
+
+Si el package no trae `attachments`, el welcome pack sale sin este adjunto (comportamiento normal).
+
+**Plantillas base**: viven en un bucket de Supabase (no en el repo; origen `Carrefour_CCPP_Premium.pdf`, `Carrefour_CCPP_Esencial.pdf`). Se descargan una vez y se **cachean en memoria por instancia** (`utils/pdf/template.ts` → `getTemplate`); en cold start serverless se re-descargan.
+
+**Overlay y cifrado en un microservicio**: la manipulación del PDF (sustituir las etiquetas `{tag}` in-place **y** cifrar con AES-256) se delega a un **microservicio Python** (`POST /pdf/manipulate`, PyMuPDF/pikepdf), para no meter dependencias de PDF en el monorepo. Next solo resuelve los valores y llama al servicio: `utils/pdf/pdfManipulateService.ts` (`manipulatePdfViaService`), JSON + bearer token, env **`PDF_ENCRYPT_SERVICE_URL`** y **`PDF_ENCRYPT_SERVICE_TOKEN`**. Overlay y cifrado se hacen en **una sola** llamada. Si el servicio no está disponible, el adjunto se omite (log) y el welcome pack sale sin PDF.
+
+**El `mapping` es la fuente de verdad de los valores**: cada `{tag}` de la plantilla apunta a una expresión en el `mapping` de `MAWDY_MAIL` (mezclado canal + evento), por lo que cambiar el origen de un dato NO requiere deploy. `utils/pdf/mappingResolver.ts` (`resolveMappingValues`) resuelve cada expresión:
+
+- Fechas: `now`, `now.day`, `now.month`, `now.year`; paths `riskItem.*` / `order.*` (prefijo case-insensitive, índice de array por `.0`); `external_id`.
+- Literales (`"Carralero"`, `"0,00"`, `""`) y **compuestos** separados por espacio conservando separadores (p. ej. `documentId`, `orderDates`).
+- Filtro del consorcio: `...taxes_details.filter(tax => tax.name === 'Consorcio')?.amount ?? 0`.
+- Las **constantes del agente** (`agentName`, `agentCode`, `office`, `agentAddress`, `agentLocation`, `agentPhone`) se leen del mismo `mapping` (extendido) como literales.
+
+El **formato es-ES** vive en código (`utils/pdf/format.ts`): fechas `dd/mm/yyyy`, `{month}` como nombre de mes en minúsculas, y montos con coma decimal y punto de miles (`formatMoney`, determinista, sin `Intl`). Los tags monetarios (`netPrice`, `discount`, `surcharge`, `totalTaxes`, `consorcio`, `grossPrice`, `orderGrossPrice`) reciben formato monetario; el sufijo `€` se define en la propia expresión del `mapping`. Una etiqueta cuyo path no resuelve queda como **cadena vacía** (no se deja el literal `{tag}` en el PDF).
+
+La **order** necesaria para los tags `order.*` (incl. `pricing`) llega por `options.orderId`; si no, se busca en `orders` por `risk_item_id` (la más antigua). Si no hay order, esos tags quedan vacíos y el resto del PDF se genera igual.
+
+**Persistencia como asset e idempotencia**:
+
+- El PDF **cifrado** se sube a `save_to` (`uploadFiles`) y se registra en **`risk_items.assets`** vía el RPC atómico **`append_risk_item_asset`** (`utils/riskItemAssets.ts`; migración `20260716120000_append_risk_item_asset_fn.sql`). El RPC hace append + dedupe por `name` en un único `UPDATE`, evitando lost-update ante reintentos o escrituras concurrentes.
+- El asset almacenado **es** el mismo artefacto que se adjunta (sin PII en claro en Storage).
+- Si el PDF cifrado ya existe en `save_to/rename_to`, un reenvío lo **reutiliza tal cual**: no se regenera ni se crea otro registro en `risk_items.assets`.
+
+**Comportamiento ante fallos**: si el `password` del attachment resuelve a vacío, ese PDF **no** se adjunta y se deja un log de error explícito; el welcome pack sigue su curso. Cada attachment va en su propio `try/catch`: un fallo aislado no rompe el envío.
+
+**Envío**: los adjuntos viajan en `RequestEmail.attachments` como `{ filename, content }` (base64) hacia `/api/mail` de MAWDY (`MawdyMailClient.sendMail`); no usa Resend (a diferencia del reporte diario por skill).
+
 ## Notificaciones en la app Next (Discord)
 
 Fuera de Supabase, fallos reintentables o abandonados en el flujo de **emisiones de integración** pueden notificarse a **Discord** vía webhook:
