@@ -62,6 +62,27 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
 
+## Panel de Batch Jobs
+
+Esas emisiones SFTP alimentan el panel **Batch Jobs** del dashboard, que lista las filas de `integration_emissions` con `provider = 'SFTP'` y `risk_item_id IS NULL` (una fila por despacho, no por risk item). Es solo lectura sobre lo que persistió el pipeline: **no** modifica `integration_emissions.status` en DB.
+
+El panel mapea el status crudo de DB a una etiqueta de UI: `SUCCESS` → **Success**, `FAILED`/`ABANDONED` → **Failed**, `RETRYING` → **Running**, `PENDING` → **Queued**.
+
+### Failed vs Empty
+
+Un despacho **outbound** sin órdenes pendientes arma igual un fichero vacío y lo sube; si esa transferencia SFTP falla por una razón técnica (timeout, credenciales, red) queda como `FAILED` en DB, indistinguible de un fallo real con pérdida de datos. Para separarlos, el panel usa el número de registros del batch (`risk_item_data.count`, poblado desde `orders.length` en el envío):
+
+- `FAILED`/`ABANDONED` con **`count = 0`** → se muestra como **Empty** (badge gris), no como Failed.
+- `FAILED`/`ABANDONED` con **`count > 0`** (o `count` nulo) → sigue siendo **Failed**.
+
+Consecuencias de la reclasificación:
+
+- El filtro de **Status** incluye la opción **Empty**.
+- El KPI **Failed runs** excluye los jobs clasificados como Empty.
+- El **Retry** sigue disponible en un job Empty igual que en un Failed: el reintento se gatea contra el status crudo de DB (`FAILED`/`ABANDONED`), no contra la etiqueta de UI.
+
+La distinción aplica **solo a outbound** (el envío es el que registra `count`). Los jobs inbound (`read`) no trackean `count` y no se reclasifican.
+
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
