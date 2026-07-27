@@ -25,6 +25,10 @@ Emisión, recibos y anulación de pólizas en XML.
 
 Los diarios (`EIAC_POLIZAS_NP`, `EIAC_POLIZAS_AN`, `EIAC_RECIBOS_NP`) se consolidan por **ventana de 24 h** en el timezone del canal. La cabecera XML lleva una `clase` configurada en el report.
 
+Las tres variantes de póliza (`NP`, `AN`, `CA`) comparten la misma preparación: los **importes** (prima total, prima neta, coberturas y cargos) se leen de los totales de la **orden** —`total_gross_price` y su `pricing`, con el coste unitario del risk item como último recurso—, así que una anulación reporta las mismas cifras que la emisión de la misma póliza. `AN` solo añade el bloque de **anulación** (fecha y motivo, derivado del motivo de cancelación guardado en la metadata del risk item).
+
+`EIAC_POLIZAS_AN` solo se genera cuando la invocación llega con `update: true` **y** el risk item ya está cancelado en base de datos; ver los triggers en [Pipeline y despacho](./intro.md).
+
 ## RIC (ancho fijo, estándar MAPFRE)
 
 Registro de información de clientes, pólizas, intervinientes y contactos.
