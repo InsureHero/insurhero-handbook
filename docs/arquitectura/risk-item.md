@@ -30,6 +30,8 @@ Para el contrato exacto que consume el orquestador, el código define **`Standar
 
 **Cancelación según fecha** — La ruta Shield `.../risk-items/[riskItemId]/cancel` interpreta la fecha de baja a **nivel de día (UTC)**: si es **hoy** (o el literal `"cancel"`), el risk item pasa a `CANCELLED` de inmediato, se registra en el historial de estados y se encola la notificación al carrier; si es una **fecha futura**, solo se guarda el `end_date` y el ciclo diario lo cancela cuando llegue; una **fecha pasada** se rechaza (`422`). Cancelar algo ya cancelado es idempotente.
 
+Cuando el risk item pasa a cancelado, un **trigger de base de datos sobre `risk_items`** avisa además al pipeline de ficheros de Carrefour para que genere la línea de **anulación** de póliza; ver [Ficheros Carrefour](../integraciones/carrefour-ficheros/intro.md).
+
 Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integraciones.md).
 
 ## Dónde se expone en la plataforma

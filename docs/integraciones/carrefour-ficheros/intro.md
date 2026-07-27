@@ -11,11 +11,12 @@ Esta página describe **cómo funciona el pipeline**; el catálogo de ficheros e
 ## Pipeline de extremo a extremo
 
 ```
-orders (INSERT)
-   │  trigger AFTER INSERT
-   ▼
+orders (INSERT / cambio de status)        risk_items (status → cancelado)
+   │  triggers AFTER INSERT / AFTER UPDATE   │  trigger AFTER UPDATE
+   └──────────────────┬──────────────────────┘
+                      ▼
 POST /api/integrations/carrefour-payments/order   ── genera un "register" por cada slug aplicable
-   ▼
+                      ▼
 temp_carriers_orders  (status = pending)
    │  cron horario por canal (carrefour_dispatch)
    ▼
@@ -26,9 +27,21 @@ CarrefourAdapter (SFTP)  ── send / receive
 integration_emissions (SUCCESS/FAILED)  +  temp_carriers_orders (status = sent)
 ```
 
-### 1. Generación (disparada por la orden)
+### 1. Generación (disparada por triggers de base de datos)
 
-Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-commit) hacia `POST /api/integrations/carrefour-payments/order`. El handler:
+Tres **triggers** publican (vía `net.http_post`, post-commit) hacia `POST /api/integrations/carrefour-payments/order`:
+
+| Trigger | Cuándo dispara | Qué manda |
+|---------|----------------|-----------|
+| `dispatch_file_registers_on_order` (`AFTER INSERT ON orders`) | Alta de la orden. | Body **sin** `update`. |
+| `dispatch_file_registers_on_order_update` (`AFTER UPDATE ON orders`) | Cambia `orders.status`. | `update: true`. |
+| `dispatch_file_registers_on_risk_item_cancellation` (`AFTER UPDATE ON risk_items`) | `risk_items.status` pasa a **cancelado** (comparación insensible al casing). | `update: true`, con el `order_id` de la **orden más reciente** del risk item. |
+
+El flag **`update: true`** distingue el alta de un cambio posterior: habilita las puertas de los slugs de anulación y movimiento (`EIAC_POLIZAS_AN`, `EIAC_RECIBOS_MO`), hace que RIC **anexe** la operación al registro existente en vez de crear otro, y acota MIC a las bajas. El tercer trigger existe porque la cancelación de un risk item desde la ruta Shield `.../risk-items/[riskItemId]/cancel` —baja inmediata o vencimiento del término, ver [Risk item](../../arquitectura/risk-item.md)— actualiza solo `risk_items` y no toca `orders`, así que sin él la anulación nunca llegaba a reportarse.
+
+Los tres comparten el mismo comportamiento de borde: gate de canal (la fila `integrations` con slug `SFTP` debe listar el canal en `auth_config.<bloque>.channels[]`), secretos `app_base_url` y `service_role_key` desde **Vault**, y patrón defensivo (`WARNING` y salida temprana) para no bloquear nunca la transacción de origen. El de `risk_items` además sale sin llamar si el risk item no tiene ninguna orden asociada.
+
+El handler:
 
 - Carga el **contexto**: `auth_config` de la fila `integrations`, el `risk_item`, la `order` y el **`timezone` del canal**.
 - **Resuelve qué reports aplican** al canal recorriendo `auth_config.<bloque>.channels[]` por `id_channel`.
@@ -39,6 +52,8 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` → `failed`) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
 
 Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`), donde se permiten varias filas.
+
+Ese índice es también lo que absorbe el **doble disparo**: cuando una cancelación cambia a la vez `orders.status` y `risk_items.status` (p. ej. la cascada por cuotas impagas), los dos triggers de `update` invocan el handler y el segundo insert se descarta en silencio si resuelve al mismo `order_id`.
 
 ### 3. Consolidación y despacho (cron por canal)
 
