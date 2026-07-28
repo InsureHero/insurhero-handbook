@@ -40,6 +40,8 @@ Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` 
 
 Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`), donde se permiten varias filas.
 
+`OPEN_SYSTEMS_V2` es el único slug que **no** se guarda con un insert directo: se persiste llamando a la función SQL `insert_open_systems_v2_register`, que en una sola operación atómica toma el siguiente correlativo de la secuencia, lo sustituye en el `register` y crea la fila `pending`. Así el campo `NUM_MOV` no queda con huecos (ver [Numeración de movimientos](./familias.md)).
+
 ### 3. Consolidación y despacho (cron por canal)
 
 Un **cron horario** (`carrefour_dispatch`, pg_cron, uno por canal Carrefour) lee `send_time` y `read_time` de la config del canal (en su timezone) y, cuando coincide la hora, dispara `POST /dispatch` con la operación **`send`** o **`read`**. El dispatch:
