@@ -50,6 +50,14 @@ Fichero **mensual** de movimientos de póliza/recibo para el sistema de "sistema
 
 La fecha de cierre se resuelve según la periodicidad del report (`monthly` + `schedule_day` + `skip_weekends`).
 
+### Numeración de movimientos (`NUM_MOV`, solo `OPEN_SYSTEMS_V2`)
+
+Cada línea de `OPEN_SYSTEMS_V2` lleva en el campo `NUM_MOV` un **correlativo global** de 9 dígitos, rellenado con ceros a la izquierda. El contador es único para toda la plataforma: **no se reinicia** por fichero, día ni canal —si una corrida cierra en 100, la siguiente arranca en 101—. Lo emite una `SEQUENCE` de Postgres (`open_systems_v2_file_register_seq`), una llamada por línea física.
+
+Para que el correlativo no deje huecos, el número **no se reserva en un paso aparte**: el `register` se arma en JS con un **placeholder** en la posición de `NUM_MOV`, y la función SQL `insert_open_systems_v2_register` sustituye ese placeholder por el número y **persiste la fila en la misma operación** (ver [pipeline](./intro.md)). Las `SEQUENCE` de Postgres nunca devuelven un número ya consumido —ni ante rollback—, así que pedirlo en una llamada separada del insert dejaría un hueco permanente cada vez que algo falle entre ambos pasos.
+
+Queda un riesgo residual acotado: si el `INSERT` falla ya dentro de la función SQL, ese número se pierde igual. Los demás slugs (incluido RIC, que tiene su propio correlativo) se persisten con el insert normal.
+
 ## MIC (ancho fijo)
 
 | Slug | Qué representa |
