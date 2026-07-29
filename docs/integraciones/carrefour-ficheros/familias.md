@@ -48,6 +48,8 @@ Fichero **mensual** de movimientos de póliza/recibo para el sistema de "sistema
 | `OPEN_SYSTEMS` | Layout base de movimientos mensuales. |
 | `OPEN_SYSTEMS_V2` | Layout revisado (tipo de registro emisión/renovación y fechas de creación / anulación / cobro). Admite varias filas por orden. |
 
+En `OPEN_SYSTEMS_V2`, la **clave de producción de la póliza** (`COD_TERCERO_AGT`) se emite con un **valor fijo en el código** (`5341664`): Carrefour opera con un único agente de producción, por lo que el campo no se configura por canal en `auth_config`.
+
 La fecha de cierre se resuelve según la periodicidad del report (`monthly` + `schedule_day` + `skip_weekends`).
 
 ## MIC (ancho fijo)
