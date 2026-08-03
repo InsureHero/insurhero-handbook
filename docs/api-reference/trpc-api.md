@@ -113,7 +113,7 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 
 | Router | Uso habitual |
 |--------|----------------|
-| `riskItems` | Ciclo de vida del risk item en el dashboard |
+| `riskItems` | Ciclo de vida del risk item en el dashboard. `update` con status cancelado encola además la **baja hacia la integración post-venta** del paquete (ver [Risk item](../arquitectura/risk-item.md)) |
 | `policies`, `orders`, `subscriptions` | Pólizas, órdenes, suscripciones |
 
 ### Integraciones
