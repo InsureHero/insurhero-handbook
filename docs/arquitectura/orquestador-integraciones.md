@@ -133,6 +133,12 @@ Para permitir varias emisiones por risk item según el hecho que las dispara, `i
 
 **`POST /api/integrations/post-sales`**: valida JWT post-sales, obtiene **`post_sales_integration_slug`** del paquete y llama al mismo orquestador. Mismo contrato `StandardRiskItem`, distinto campo de configuración en el paquete.
 
+### Bajas y re-altas de postventa desde el core
+
+`enqueueExternalCancellation` y `enqueueExternalEmission` (en `utils/orders/state-transitions.ts`) son el punto único por el que el core pide una **baja** (`CANCEL`) o un **alta / re-alta** (`EMIT`) hacia `/api/integrations/post-sales`. Son **fire-and-forget** y se deduplican contra el **último evento exitoso** (`SUCCESS`, `PARTIAL` o `SKIPPED`) en `integration_emissions` para ese risk item y proveedor: si coincide con el evento pedido, no se llama al adaptador; un `CANCEL` sin ninguna emisión previa registrada también se omite.
+
+Los llamadores consultan ese mismo último evento **antes** de encolar (helper `getLastAmaEvent`, que resuelve el `post_sales_integration_slug` del paquete), en vez de fiarse de `risk_items.status`, que puede quedar desactualizado tras una re-alta por pago tardío. Los caminos de cancelación y el criterio completo están en [Risk item](./risk-item.md).
+
 ### Backoffice (tRPC)
 
 **`integrationEmissions`**: consulta emisiones por risk item, **`retryEmissions`** y **`syncBeneficiaries`** delegan en lógica de reintento/emisión (`retryFromBackoffice`, `executeEmission`) para **gestionar reintentos** desde el dashboard (coherente con la “pila” del diagrama).

@@ -28,7 +28,21 @@ Para el contrato exacto que consume el orquestador, el código define **`Standar
 4. **Postventa del titular** — OTP, JWT y rutas **`/api/postsales/v1/...`** operan sobre risk items donde el email es titular; la RPC **`postsales_risk_item_ids_by_holder_email`** acota elegibilidad.
 5. **Reclamos** — Los siniestros se anclan al contexto del contrato; las rutas Shield de **`.../claims`** y **`.../claims/[id]/workflow`** conviven con el mismo modelo de dominio.
 
-**Cancelación según fecha** — La ruta Shield `.../risk-items/[riskItemId]/cancel` interpreta la fecha de baja a **nivel de día (UTC)**: si es **hoy** (o el literal `"cancel"`), el risk item pasa a `CANCELLED` de inmediato, se registra en el historial de estados y se encola la notificación al carrier; si es una **fecha futura**, solo se guarda el `end_date` y el ciclo diario lo cancela cuando llegue; una **fecha pasada** se rechaza (`422`). Cancelar algo ya cancelado es idempotente.
+**Cancelación según fecha** — La ruta Shield `.../risk-items/[riskItemId]/cancel` interpreta la fecha de baja a **nivel de día (UTC)**: si es **hoy** (o el literal `"cancel"`), el risk item pasa a `CANCELLED` de inmediato, se registra en el historial de estados y se encola la notificación al carrier; si es una **fecha futura**, solo se guarda el `end_date` y el ciclo diario lo cancela cuando llegue; una **fecha pasada** se rechaza (`422`). Volver a pedir la baja de algo ya cancelado no persiste nada y responde `ok`; solo reenvía la baja al carrier si la integración post-venta todavía no la tiene registrada (ver más abajo).
+
+**Caminos de cancelación** — Tres flujos dejan un risk item cancelado, y los tres notifican la baja a la **integración post-venta del paquete** (`post_sales_integration_slug`, hoy AMA) cuando está configurada:
+
+| Camino | Detalle |
+|--------|---------|
+| Botón **Cancel** del detalle de risk item (dashboard) | Persiste vía `riskItems.update` de tRPC con status cancelado. La baja se dispara solo si la fila existe **para ese canal**: el side effect corre con service role (fuera de RLS), así que la pertenencia al canal se comprueba antes con el cliente de sesión. |
+| Ruta Shield `.../risk-items/[riskItemId]/cancel` | Partners e integraciones externas. |
+| Cascada de impago | Cancelación de la orden y racha de cuotas impagas (`state-transitions.ts`). |
+
+**Qué decide si se notifica** — No es `risk_items.status`: una **reactivación por pago tardío** vuelve a dar de alta en el carrier (`EMIT`) sin resetear ese campo, así que la fila puede quedar en cancelado mientras la póliza sigue vigente en el carrier. La fuente de verdad es el **último evento exitoso registrado en `integration_emissions`** para ese risk item y proveedor: se notifica la baja salvo que ese último evento ya sea `CANCEL`. Si nunca hubo una emisión previa registrada, la baja se omite (no hay nada que dar de baja).
+
+Además, `risk_items.status` es texto libre en base —conviven `"CANCELLED"` (dashboard) y `"cancelled"` (Shield y cascadas)—, por lo que la comprobación de “¿está cancelado?” es **case-insensitive** y vive en un helper compartido (`utils/riskItemStatus.utils.ts`).
+
+**Rescisiones** — Las rutas `.../risk-items/[riskItemId]/rescissions` dejan el risk item en `INACTIVE` y **no** notifican baja al carrier: es un concepto distinto (desistimiento), no una cancelación.
 
 Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integraciones.md).
 
