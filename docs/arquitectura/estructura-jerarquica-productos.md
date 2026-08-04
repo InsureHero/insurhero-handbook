@@ -214,20 +214,19 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
 - **Impuestos (taxes - JSONB)**:
   - Array de impuestos aplicables
   - Cada impuesto puede ser:
-    - **Tipo rate**: Porcentaje sobre el precio bruto
-    - **Tipo value**: Valor fijo
+    - **Tipo rate**: se aplica sobre el precio bruto de la variante. Se guarda como **fracción** (`0.16` = 16 %); la validación rechaza valores mayores que 1.
+    - **Tipo value**: importe fijo
+  - Los importes escritos en el formulario se normalizan al guardar: tanto el punto como la coma valen como separador decimal (`"3,62"` se persiste como `3.62`).
   - Ejemplo:
     ```json
     [
       {
         "name": "IVA",
-        "rate": "0.16",
-        "type": "rate"
+        "rate": 0.16
       },
       {
         "name": "Tasa fija",
-        "value": "50",
-        "type": "value"
+        "value": "50"
       }
     ]
     ```
@@ -240,18 +239,27 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
   - `one_time` o `recurring`
   - Puede heredar del paquete o definirse específicamente
 
-- **Markup (markup - JSONB)**:
-  - Margen de ganancia adicional
-  - Puede contener múltiples niveles de markup
-  - Cada entrada tiene un `owner` (`channel` / `platform` / `insurer` / `broker`) que identifica al actor que cobra el margen. En el pricing de la orden los markups se agregan **por owner** (`markups_details`) y se mantienen separados de los impuestos legales (`taxes_details`).
-  - Cada entrada puede ser un **monto fijo** o una **tasa** (`is_rate: true`, porcentaje sobre el `gross_price` de la variante).
-  - Ejemplo:
+- **Markup / comisiones (markup - JSONB)**:
+  - Array de entradas de **comisión**; puede haber varias por variante.
+  - Cada entrada tiene un `owner` (`channel` / `platform` / `insurer` / `broker`) que identifica al actor que cobra la comisión. En el pricing de la orden las entradas se agregan **por owner** (`markups_details`, que conserva `gross_price` y `net_price` de cada owner) y se mantienen separadas de los impuestos legales (`taxes_details`).
+  - `gross_price` es la **comisión bruta, con sus impuestos incluidos**. Los `taxes[]` de la entrada son los **impuestos sobre esa comisión** y la **neta es siempre derivada** (no se persiste):
+
+    ```
+    neta = bruta / (1 + suma(rates)) - suma(values)
+    ```
+
+    Un impuesto de tipo `rate` no se aplica *sobre* la bruta: se **extrae** de ella (`amount = bruta - bruta / (1 + suma(rates))`, repartido entre los rates en proporción a cada uno). Uno de tipo `value` se resta tal cual.
+  - Los `rate` se guardan como **fracción** (`0.21` = 21 %). La validación rechaza fracciones mayores que 1; ante un dato viejo con porcentaje crudo el motor **no** multiplica por él: registra un warning y trata ese impuesto como importe 0.
+  - `gross_price` puede capturarse como **tasa sobre la prima** (`is_rate: true`): el formulario pide el porcentaje y persiste el monto resultante sobre el `gross_price` de la variante.
+  - El detalle de la orden muestra, por owner, **comisión bruta / impuestos / comisión neta** más el total. Los snapshots anteriores a este modelo no traen bruta ni neta en el agregado: esas celdas se muestran como `—`, no como `0`.
+  - Ejemplo (comisión bruta de 121 con IVA del 21 % → neta 100):
     ```json
     [
       {
-        "name": "Markup Canal",
         "owner": "channel",
-        "gross_price": "50"
+        "gross_price": "121",
+        "is_rate": false,
+        "taxes": [{ "name": "IVA", "rate": 0.21 }]
       }
     ]
     ```
@@ -316,9 +324,9 @@ CREATE TABLE "variants" (
 #### Cálculo de Precios:
 El precio final se calcula:
 1. Se evalúa `gross_price` usando los valores del `subject_schema`
-2. Se aplican los impuestos (`taxes`)
-3. Se aplica el markup (`markup`)
-4. El precio neto = precio bruto - impuestos
+2. Se calculan los impuestos (`taxes`) sobre ese bruto → `taxes_details`
+3. Se resuelve cada entrada de `markup`: comisión bruta, sus impuestos y la neta derivada; el resultado se agrega **por owner** → `markups_details`
+4. El precio neto = precio bruto − impuestos. Las comisiones son un **reparto** de esa prima entre los actores de la cadena, no un recargo sobre ella
 
 ---
 
@@ -374,7 +382,7 @@ CREATE TABLE "coverages" (
    - Las reglas de **Variante** tienen precedencia sobre las de **Paquete**
 3. **Precio Base**: Se define en **Variante** (`gross_price`)
 4. **Impuestos**: Se aplican en **Variante** sobre el precio bruto
-5. **Markup**: Se aplica en **Variante** después de impuestos
+5. **Comisiones (markup)**: Se definen en **Variante** por owner; reparten la prima bruta y su neta se deriva de los impuestos cargados sobre la propia comisión
 
 ### Ejemplo de Cálculo de Precio Final
 
@@ -383,18 +391,21 @@ Canal: Moneda = USD
 
 Variante:
   - gross_price = "1000 + (age * 50)"
-  - taxes = [{"rate": "0.16", "type": "rate"}]
-  - markup = [{"gross_price": "100"}]
+  - taxes = [{"name": "IVA", "rate": 0.16}]
+  - markup = [{"owner": "channel", "gross_price": "121",
+               "taxes": [{"name": "IVA", "rate": 0.21}]}]
 
 Sujeto asegurado: age = 30
 
 Cálculo:
-  1. Precio base = 1000 + (30 * 50) = 2500 USD
-  2. Impuesto (16%) = 2500 * 0.16 = 400 USD
-  3. Precio con impuesto = 2500 + 400 = 2900 USD
-  4. Markup = 100 USD
-  5. Precio final bruto = 2900 + 100 = 3000 USD
-  6. Precio neto = 3000 - 400 = 2600 USD
+  1. Precio bruto = 1000 + (30 * 50) = 2500 USD
+  2. Impuestos (16%) = 2500 * 0.16 = 400 USD
+  3. Precio neto = 2500 - 400 = 2100 USD
+
+  Comisión del canal (dentro de esos 2500):
+  4. Comisión bruta = 121 USD
+  5. Impuesto de la comisión = 121 - 121 / 1.21 = 21 USD
+  6. Comisión neta = 121 / 1.21 = 100 USD
 ```
 
 ---
