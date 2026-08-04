@@ -63,6 +63,15 @@ Se generan en alta (creación) y en cancelación; no en modificaciones que no se
 
 Movimientos de **pago** diarios. Cada línea lleva el tipo y valor del identificador del asegurado, el producto, el **signo** (`+` / `-`) y el **importe** de la orden.
 
+## Comisión del canal (EIAC y SSAA)
+
+Dos campos reportan la comisión del canal: `comisionLiquida` en los XML de EIAC (pólizas y recibos) y el **código económico `998`** de `OPEN_SYSTEMS`. Ambos se resuelven con **la misma función compartida**, para que no puedan discrepar sobre la misma orden.
+
+- **Fuente**: el snapshot de pricing de la orden (`orders.pricing.total.markups_details`, entrada con `owner: "channel"`), no el catálogo en vivo. Así una orden vieja reporta la comisión que tenía al venderse, aunque el producto cambie después.
+- **Valor reportado**: la comisión **neta**. Como la comisión de Carrefour no tiene impuestos cargados, hoy neta = bruta y lo enviado no cambia; ambas divergirán solo cuando se cargue un impuesto sobre la comisión (ver [markup en la jerarquía de producto](../../arquitectura/estructura-jerarquica-productos.md)).
+- **Formato legado**: las entradas que todavía traen la comisión como pseudo-impuesto `Comission` dentro de sus `details` se leen con la aritmética anterior (suma de esos importes) y dejan un **warning en el log**, señal de dato pendiente de normalizar.
+- **Fallback al catálogo**: si la orden no tiene entrada de canal en su snapshot (órdenes anteriores al formato actual de `pricing`), el EIAC suma la comisión desde `variants.markup` de las variantes activas del paquete, con el mismo criterio de formato. El código `998` no usa ese fallback: sin entrada de canal reporta `0`.
+
 ## Referencias
 
 - [Pipeline y despacho](./intro.md)

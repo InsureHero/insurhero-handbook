@@ -182,44 +182,48 @@ Es una **expresión matemática** que se evalúa dinámicamente usando los valor
 #### 2. `taxes` (jsonb - array de impuestos)
 
 Array de objetos donde cada impuesto puede ser:
-- **Tipo `rate`**: Porcentaje sobre el precio bruto
-- **Tipo `value`**: Valor fijo
+- **Tipo `rate`**: se aplica sobre el precio bruto de la variante. Se guarda como **fracción** (`0.16` = 16 %) — en el formulario escribes el porcentaje (`16`) y el sistema persiste la fracción. Un valor mayor que 1 es rechazado por la validación.
+- **Tipo `value`**: importe fijo
+
+Los importes se normalizan al guardar: tanto el punto como la coma valen como separador decimal, así que escribir `3,62` persiste `3.62`.
 
 **Ejemplo:**
 ```json
 [
   {
     "name": "IVA",
-    "rate": "0.16",
-    "type": "rate"
+    "rate": 0.16
   },
   {
     "name": "Tasa Administrativa",
-    "value": "50",
-    "type": "value"
+    "value": "50"
   }
 ]
 ```
 
-#### 3. `markup` (jsonb - array de márgenes)
+#### 3. `markup` (jsonb - array de comisiones)
 
-Array de objetos que representan márgenes de ganancia adicionales. Cada markup pertenece a un **`owner`** (`channel`, `platform`, `insurer` o `broker`) que identifica al actor que cobra ese margen sobre la prima. En el pricing de la orden los markups se agregan **por owner** y se mantienen separados de los impuestos legales de la variante.
+Array de objetos que representan las **comisiones** que cobra cada actor sobre la prima. Cada entrada pertenece a un **`owner`** (`channel`, `platform`, `insurer` o `broker`). En el pricing de la orden las entradas se agregan **por owner** (con su bruta y su neta) y se mantienen separadas de los impuestos legales de la variante.
 
-Un markup puede expresarse como **monto fijo** o como **tasa**: si `is_rate` es `true`, el valor se interpreta como un porcentaje sobre el `gross_price` de la variante y el sistema calcula el monto resultante; si es `false` o está ausente, `gross_price` es un monto fijo. Los `taxes` dentro de un markup **no** son impuestos legales, sino los componentes del propio markup.
+El modelo es el mismo para todos los owners:
 
-**Ejemplo:**
+- **`gross_price` es la comisión bruta, con sus impuestos incluidos.**
+- Los `taxes` de la entrada son los **impuestos sobre esa comisión** (no impuestos legales de la prima). Sus `rate` se guardan como fracción (`0.21` = 21 %).
+- La **comisión neta es calculada**, nunca se guarda: `neta = bruta / (1 + suma(rates)) - suma(values)`. El formulario la muestra como campo de solo lectura y la recalcula al cambiar la bruta o los impuestos.
+
+`gross_price` también puede capturarse como **tasa sobre la prima**: si marcas `is_rate`, escribes el porcentaje y el sistema persiste el monto resultante sobre el `gross_price` de la variante; si `is_rate` es `false` o está ausente, `gross_price` es el importe tal cual.
+
+**Ejemplo** (comisión bruta de 121 con IVA del 21 % → neta 100):
 ```json
 [
   {
-    "name": "Markup Canal",
     "owner": "channel",
-    "gross_price": "100",
+    "gross_price": "121",
     "is_rate": false,
     "taxes": [
       {
-        "name": "IVA Markup",
-        "rate": "0.16",
-        "type": "rate"
+        "name": "IVA",
+        "rate": 0.21
       }
     ]
   }
@@ -296,13 +300,12 @@ Define los campos requeridos para presentar un reclamo.
   "taxes": [
     {
       "name": "IVA",
-      "rate": "0.16",
-      "type": "rate"
+      "rate": 0.16
     }
   ],
   "markup": [
     {
-      "name": "Markup Canal",
+      "owner": "channel",
       "gross_price": "50"
     }
   ],
@@ -337,17 +340,16 @@ Define los campos requeridos para presentar un reclamo.
 
 El sistema calcula el precio así:
 
-1. **Precio Base**: Evalúa `gross_price` usando valores del `subject_schema`
+1. **Precio Bruto**: Evalúa `gross_price` usando valores del `subject_schema`
    - Ejemplo: Si `vehicle_value = 20000`, entonces: `500 + (20000 * 0.02) = 900`
 
-2. **Aplicar Impuestos**: Calcula impuestos sobre el precio base
-   - Ejemplo: `900 * 0.16 (IVA) = 144` → Precio con impuestos: `1044`
+2. **Impuestos**: Calcula los impuestos de la variante sobre ese bruto
+   - Ejemplo: `900 * 0.16 (IVA) = 144`
 
-3. **Aplicar Markup**: Suma el markup
-   - Ejemplo: `1044 + 50 = 1094`
+3. **Precio Neto**: `900 - 144 = 756`
 
-4. **Precio Final Bruto**: `1094`
-5. **Precio Neto**: `1094 - 144 = 950`
+4. **Comisiones**: Resuelve cada entrada de `markup` (bruta, impuestos de la comisión y neta derivada) y las agrega por owner. Son un **reparto** de esos `900`, no un recargo sobre ellos
+   - Ejemplo: comisión del canal con `gross_price: "50"` y sin impuestos → bruta `50`, neta `50`
 
 ---
 
@@ -674,8 +676,8 @@ Precio total calculado como expresión matemática que suma todos los precios de
 3. El cliente completa el **`subject_schema`** con sus datos
 4. El sistema:
    - Toma todas las **variantes** del paquete
-   - Calcula el precio de cada variante usando `gross_price` + `taxes` + `markup`
-   - Suma todos los precios → `total_gross_price`
+   - Calcula el precio de cada variante: bruto, impuestos y neto, más el desglose de **comisiones por owner**
+   - Suma los brutos de todas las variantes → `total_gross_price`
 5. Se crea la póliza con todos estos datos como **snapshot**
 
 ---
