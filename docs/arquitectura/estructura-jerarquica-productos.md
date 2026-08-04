@@ -216,6 +216,7 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
   - Cada impuesto puede ser:
     - **Tipo rate**: Porcentaje sobre el precio bruto
     - **Tipo value**: Valor fijo
+  - El `rate` se expresa en **fracción** (`0.16` = 16%): la UI captura el porcentaje y persiste la fracción, y la validación rechaza cualquier `rate` mayor que 1.
   - Ejemplo:
     ```json
     [
@@ -241,20 +242,34 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
   - Puede heredar del paquete o definirse específicamente
 
 - **Markup (markup - JSONB)**:
-  - Margen de ganancia adicional
-  - Puede contener múltiples niveles de markup
-  - Cada entrada tiene un `owner` (`channel` / `platform` / `insurer` / `broker`) que identifica al actor que cobra el margen. En el pricing de la orden los markups se agregan **por owner** (`markups_details`) y se mantienen separados de los impuestos legales (`taxes_details`).
-  - Cada entrada puede ser un **monto fijo** o una **tasa** (`is_rate: true`, porcentaje sobre el `gross_price` de la variante).
+  - Array con la **remuneración de cada actor** sobre la prima de la variante (comisiones). No incrementa el precio de venta: reparte la prima bruta.
+  - Cada entrada tiene un `owner` (`channel` / `platform` / `insurer` / `broker`) que identifica al actor que cobra. En el pricing de la orden las entradas se agregan **por owner** (`markups_details`, con su `gross_price` y `net_price`) y se mantienen separadas de los impuestos legales de la variante (`taxes_details`).
+  - **`gross_price` es la comisión bruta, con impuestos incluidos.**
+  - Los `taxes[]` de la entrada son los **impuestos sobre esa comisión** (no impuestos de la prima) y se **extraen** de la bruta:
+    - tipo `rate`: `importe = bruta − bruta / (1 + Σ rates)`, repartido entre los rates en proporción a cada uno.
+    - tipo `value`: `importe = value`.
+  - La **comisión neta es derivada**, nunca se captura: `neta = bruta / (1 + Σ rates) − Σ values`. Sin `taxes[]`, `neta = bruta`.
+  - El `rate` se persiste siempre en **fracción** (`0.21` = 21%). La UI muestra y captura el porcentaje y guarda la fracción; la validación **rechaza cualquier `rate` mayor que 1**. Si un dato antiguo aún trae un porcentaje crudo, el motor **no** lo multiplica: loguea un warning y calcula ese impuesto como 0.
+  - El campo `net_price` de la entrada **ya no se persiste** (es derivado). Sigue siendo opcional en el schema solo para leer registros anteriores; la migración lo dejó en `null`.
+  - Con `is_rate: true` la comisión bruta se **captura como porcentaje** del `gross_price` de la variante, pero lo que se persiste en `gross_price` es siempre el **importe** resultante.
+  - Los importes admiten **coma o punto** como separador decimal: `"3,62"` se normaliza a `3.62` al guardar.
+  - En el detalle de la orden, la sección **Distribución** muestra por owner **comisión bruta / impuestos / comisión neta** más una fila de totales. Los snapshots de pricing anteriores a este modelo no guardaron bruta ni neta en el agregado: esas celdas se muestran como `—`, no como `0`.
   - Ejemplo:
     ```json
     [
       {
-        "name": "Markup Canal",
         "owner": "channel",
-        "gross_price": "50"
+        "gross_price": "121",
+        "taxes": [
+          {
+            "name": "IVA",
+            "rate": 0.21
+          }
+        ]
       }
     ]
     ```
+    Comisión bruta 121, impuesto 21, **comisión neta 100**.
 
 - **Límites de Cobertura (coverage_limits)**:
   - Límite máximo de cobertura en valor numérico
@@ -302,7 +317,7 @@ CREATE TABLE "variants" (
     taxes jsonb NOT NULL,            -- Array de impuestos
     pricing_rules jsonb,             -- Reglas de precios
     pricing_type text,               -- Tipo de precio
-    markup jsonb NOT NULL,           -- Margen de ganancia
+    markup jsonb NOT NULL,           -- Comisiones por actor
     coverage_limits numeric DEFAULT 0,
     deductible text,
     conditions text NOT NULL,
@@ -315,10 +330,10 @@ CREATE TABLE "variants" (
 
 #### Cálculo de Precios:
 El precio final se calcula:
-1. Se evalúa `gross_price` usando los valores del `subject_schema`
-2. Se aplican los impuestos (`taxes`)
-3. Se aplica el markup (`markup`)
-4. El precio neto = precio bruto - impuestos
+1. Se evalúa `gross_price` usando los valores del `subject_schema` → **prima bruta**
+2. Se calculan los impuestos de la variante (`taxes`) sobre esa prima
+3. El precio neto = prima bruta − impuestos
+4. Se calculan las **comisiones** del `markup` por owner: son una porción **contenida** en la prima bruta, no un importe que se suma al precio de venta
 
 ---
 
@@ -374,7 +389,7 @@ CREATE TABLE "coverages" (
    - Las reglas de **Variante** tienen precedencia sobre las de **Paquete**
 3. **Precio Base**: Se define en **Variante** (`gross_price`)
 4. **Impuestos**: Se aplican en **Variante** sobre el precio bruto
-5. **Markup**: Se aplica en **Variante** después de impuestos
+5. **Markup**: Se define en **Variante** y reparte esa prima entre los actores (comisiones); no altera el precio de venta
 
 ### Ejemplo de Cálculo de Precio Final
 
@@ -383,18 +398,21 @@ Canal: Moneda = USD
 
 Variante:
   - gross_price = "1000 + (age * 50)"
-  - taxes = [{"rate": "0.16", "type": "rate"}]
-  - markup = [{"gross_price": "100"}]
+  - taxes = [{"name": "IVA", "rate": 0.16}]
+  - markup = [{"owner": "channel", "gross_price": "121",
+               "taxes": [{"name": "IVA", "rate": 0.21}]}]
 
 Sujeto asegurado: age = 30
 
 Cálculo:
-  1. Precio base = 1000 + (30 * 50) = 2500 USD
-  2. Impuesto (16%) = 2500 * 0.16 = 400 USD
-  3. Precio con impuesto = 2500 + 400 = 2900 USD
-  4. Markup = 100 USD
-  5. Precio final bruto = 2900 + 100 = 3000 USD
-  6. Precio neto = 3000 - 400 = 2600 USD
+  1. Prima bruta = 1000 + (30 * 50) = 2500 USD
+  2. Impuesto de la variante (16%) = 2500 * 0.16 = 400 USD
+  3. Prima neta = 2500 - 400 = 2100 USD
+
+Reparto (markup, contenido en los 2500):
+  4. Comisión bruta del canal = 121 USD
+  5. Impuesto de la comisión (21%) = 121 - 121 / 1.21 = 21 USD
+  6. Comisión neta del canal = 100 USD
 ```
 
 ---
