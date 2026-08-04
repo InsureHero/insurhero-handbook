@@ -62,6 +62,17 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
 
+## Comisión del canal (EIAC y SSAA)
+
+Dos ficheros reportan la comisión del canal: el tag **`<ComisionLiquida>`** de los XML EIAC (póliza y recibo) y el **código económico `998`** del SSAA. Ambos salen de una **única función compartida**, de modo que para una misma orden nunca difieren.
+
+La fuente preferida es el **snapshot de pricing de la orden** (`orders.pricing.total.markups_details`, la entrada con `owner = "channel"`): la comisión bruta es su **`gross_price`**, tal como lo define el [modelo de markup de la variante](../../arquitectura/estructura-jerarquica-productos.md). Ambos ficheros reportan la **bruta**.
+
+Casos que la función cubre:
+
+- **Formato anterior** — si la entrada del snapshot trae un detalle llamado `Comission` (el pseudo-impuesto con el que se guardaba antes la comisión), se suma ese detalle y se registra un **warning** indicando que es un dato sin migrar.
+- **Snapshot sin comisión de canal** (pricing legado: no hay entrada `channel`, o no trae ni el pseudo-impuesto ni `gross_price`) — el EIAC cae al **catálogo en vivo**: suma la comisión de las variantes activas del paquete (`variants.markup`, owner `channel`), con el mismo criterio de formatos. El código `998` reporta `0` en ese caso.
+
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
@@ -83,6 +94,7 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
 - Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
+- Comisión del canal (compartida por EIAC y SSAA): `apps/next/src/app/api/integrations/carrefour-payments/order/eiac-commission.ts`
 
 ## Referencias
 

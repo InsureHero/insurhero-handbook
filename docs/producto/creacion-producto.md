@@ -151,7 +151,7 @@ Según el schema de Supabase (`variants` table):
 | `description` | `text` | Descripción detallada | No |
 | `gross_price` | `text` | **Precio base como expresión matemática** | ✅ Sí |
 | `taxes` | `jsonb` | Array de impuestos aplicables | ✅ Sí |
-| `markup` | `jsonb` | Margen de ganancia (array) | ✅ Sí |
+| `markup` | `jsonb` | Comisiones por actor (array) | ✅ Sí |
 | `coverage_limits` | `numeric` | Límite máximo de cobertura (default: 0) | No |
 | `deductible` | `text` | Deducible (puede ser expresión) | No |
 | `conditions` | `text` | Condiciones de la variante | ✅ Sí |
@@ -182,8 +182,8 @@ Es una **expresión matemática** que se evalúa dinámicamente usando los valor
 #### 2. `taxes` (jsonb - array de impuestos)
 
 Array de objetos donde cada impuesto puede ser:
-- **Tipo `rate`**: Porcentaje sobre el precio bruto
-- **Tipo `value`**: Valor fijo
+- **Tipo `rate`**: Porcentaje sobre el precio bruto, expresado en **fracción** (`0.16` = 16%). El formulario pide el porcentaje y persiste la fracción; un `rate` mayor que 1 es rechazado por validación.
+- **Tipo `value`**: Valor fijo (acepta coma o punto como separador decimal)
 
 **Ejemplo:**
 ```json
@@ -201,30 +201,37 @@ Array de objetos donde cada impuesto puede ser:
 ]
 ```
 
-#### 3. `markup` (jsonb - array de márgenes)
+#### 3. `markup` (jsonb - array de comisiones por actor)
 
-Array de objetos que representan márgenes de ganancia adicionales. Cada markup pertenece a un **`owner`** (`channel`, `platform`, `insurer` o `broker`) que identifica al actor que cobra ese margen sobre la prima. En el pricing de la orden los markups se agregan **por owner** y se mantienen separados de los impuestos legales de la variante.
+Array de objetos que representan la **remuneración de cada actor** sobre la prima de la variante. Cada entrada pertenece a un **`owner`** (`channel`, `platform`, `insurer` o `broker`) que identifica a quién cobra. En el pricing de la orden las entradas se agregan **por owner** (con su comisión bruta y neta) y se mantienen separadas de los impuestos legales de la variante. El markup **no se suma** al precio de venta: es la porción de la prima bruta que se reparte.
 
-Un markup puede expresarse como **monto fijo** o como **tasa**: si `is_rate` es `true`, el valor se interpreta como un porcentaje sobre el `gross_price` de la variante y el sistema calcula el monto resultante; si es `false` o está ausente, `gross_price` es un monto fijo. Los `taxes` dentro de un markup **no** son impuestos legales, sino los componentes del propio markup.
+En una entrada de markup:
+
+- **`gross_price` es la comisión bruta, con impuestos incluidos.** Si `is_rate` es `true`, la bruta se captura como porcentaje del `gross_price` de la variante, pero lo que queda persistido es siempre el importe.
+- **`taxes[]` son los impuestos sobre esa comisión** (no impuestos de la prima) y se extraen de la bruta: los de tipo `rate` como `bruta − bruta / (1 + Σ rates)` repartido en proporción a cada rate, y los de tipo `value` por su importe.
+- **La comisión neta es derivada y no se captura**: `neta = bruta / (1 + Σ rates) − Σ values`. Sin `taxes[]`, la neta es igual a la bruta. El formulario de variante la muestra como campo de solo lectura y la recalcula al cambiar la bruta o los impuestos.
+- El `rate` se persiste en **fracción** (`0.21` = 21%). El formulario pide el porcentaje (`21`) y guarda la fracción; guardar un `rate` mayor que 1 es **rechazado por validación**.
+- `net_price` **ya no se persiste** (derivado); solo se sigue aceptando en el schema para leer registros antiguos.
+- Los importes aceptan **coma o punto** como separador decimal (`"3,62"` se guarda como `3.62`).
 
 **Ejemplo:**
 ```json
 [
   {
-    "name": "Markup Canal",
     "owner": "channel",
-    "gross_price": "100",
+    "gross_price": "121",
     "is_rate": false,
     "taxes": [
       {
-        "name": "IVA Markup",
-        "rate": "0.16",
-        "type": "rate"
+        "name": "IVA",
+        "rate": 0.21
       }
     ]
   }
 ]
 ```
+
+Comisión bruta 121, impuesto 21 → **comisión neta 100**.
 
 #### 4. `subject_schema` (jsonb - esquema del sujeto)
 
@@ -302,7 +309,7 @@ Define los campos requeridos para presentar un reclamo.
   ],
   "markup": [
     {
-      "name": "Markup Canal",
+      "owner": "channel",
       "gross_price": "50"
     }
   ],
@@ -337,17 +344,18 @@ Define los campos requeridos para presentar un reclamo.
 
 El sistema calcula el precio así:
 
-1. **Precio Base**: Evalúa `gross_price` usando valores del `subject_schema`
+1. **Prima Bruta**: Evalúa `gross_price` usando valores del `subject_schema`
    - Ejemplo: Si `vehicle_value = 20000`, entonces: `500 + (20000 * 0.02) = 900`
 
-2. **Aplicar Impuestos**: Calcula impuestos sobre el precio base
-   - Ejemplo: `900 * 0.16 (IVA) = 144` → Precio con impuestos: `1044`
+2. **Impuestos de la variante**: Calcula los impuestos sobre la prima bruta
+   - Ejemplo: `900 * 0.16 (IVA) = 144`
 
-3. **Aplicar Markup**: Suma el markup
-   - Ejemplo: `1044 + 50 = 1094`
+3. **Precio Neto**: `900 - 144 = 756`
 
-4. **Precio Final Bruto**: `1094`
-5. **Precio Neto**: `1094 - 144 = 950`
+4. **Comisiones (`markup`)**: Se calculan por owner y **están contenidas** en la prima bruta; no se suman al precio de venta
+   - Ejemplo: comisión bruta del canal `50`; sin impuestos de comisión, la comisión neta también es `50`
+
+5. **Precio Final Bruto** (lo que paga el cliente): `900`
 
 ---
 
@@ -617,7 +625,7 @@ Contiene los **valores reales** del sujeto asegurado que se usaron para calcular
 
 Precio total calculado como expresión matemática que suma todos los precios de las variantes incluidas.
 
-**Ejemplo:** `"1094 + 200 + 150"` (suma de todas las variantes del paquete)
+**Ejemplo:** `"900 + 200 + 150"` (suma de todas las variantes del paquete)
 
 ### Ejemplo Real Completo
 
@@ -646,7 +654,7 @@ Precio total calculado como expresión matemática que suma todos los precios de
       {
         "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
         "name": "Seguro Básico de Auto",
-        "gross_price": "1094",
+        "gross_price": "900",
         "coverage_limits": 50000
       }
     ]
@@ -656,7 +664,7 @@ Precio total calculado como expresión matemática que suma todos los precios de
     "vehicle_value": 25000,
     "vehicle_year": 2020
   },
-  "total_gross_price": "1094 + 200 + 150",
+  "total_gross_price": "900 + 200 + 150",
   "metadata": {
     "sales_channel": "web",
     "agent_id": "agent-123"
@@ -674,8 +682,8 @@ Precio total calculado como expresión matemática que suma todos los precios de
 3. El cliente completa el **`subject_schema`** con sus datos
 4. El sistema:
    - Toma todas las **variantes** del paquete
-   - Calcula el precio de cada variante usando `gross_price` + `taxes` + `markup`
-   - Suma todos los precios → `total_gross_price`
+   - Calcula el precio de cada variante (`gross_price` y sus `taxes`) y el reparto de comisiones (`markup`)
+   - Suma los precios de las variantes → `total_gross_price`
 5. Se crea la póliza con todos estos datos como **snapshot**
 
 ---
