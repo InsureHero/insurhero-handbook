@@ -40,6 +40,20 @@ Usa placeholders evidentes:
 ❌ **Mal:**
 `SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 
+## Logs sin secretos ni PII
+
+Los logs de la plataforma **no son un lugar seguro**: quedan escritos y no se pueden desescribir. Por eso ningún log del repositorio imprime:
+
+- Tokens o credenciales de carrier —ni completos ni su longitud, que ya es fingerprinting—.
+- Secrets de plataforma (`AUTH_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`) ni valores derivados de ellos.
+- Payloads completos de request o response.
+- PII de asegurados o titulares: nombre, documento, email, teléfono, domicilio.
+- URLs con query string (usar `pathname`, que no arrastra parámetros).
+
+Lo que sí se loguea son identificadores internos, nombres de proveedor, estados y contadores.
+
+La guardia técnica es la regla `no-console` en `apps/next`, que solo admite `console.warn` y `console.error` y cierra `log`, `info` y `debug` como canal por donde se pueda volver a filtrar un token. El detalle de niveles y excepciones está en [Guías de Desarrollo → Logging](/guias-desarrollo/intro#logging).
+
 ## Datos sintéticos en pruebas
 
 > 📌 **Toda prueba o ejemplo debe utilizar datos generados artificialmente** que no tengan relación con usuarios, pólizas o transacciones reales.
