@@ -39,6 +39,18 @@ Registro de información de clientes, pólizas, intervinientes y contactos.
 
 Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden.
 
+### Filas de contacto
+
+Un mismo envío puede llevar **varias filas de contacto**: una por cada **canal** (`TIP_CANAL`) del que el **titular** tenga dato. Cada fila informa **solo los campos propios de su canal** y deja el resto en blanco —el ancho del registro no cambia, solo su contenido:
+
+| Canal (`TIP_CANAL`) | Qué informa esa fila | Se emite cuando el titular tiene… |
+|---|---|---|
+| `DOMICILIO` | Dirección: provincia, código postal, domicilio y localidad. | Dirección, código postal, localidad **o** provincia. |
+| `EMAIL` | Solo el email. | Email. |
+| `MOVIL` | Solo el teléfono. | Teléfono. |
+
+Si el titular no tiene ningún dato de contacto se emite igualmente una fila `DOMICILIO` con esos campos en blanco.
+
 ## OPEN_SYSTEMS / OPEN_SYSTEMS_V2 (SSAA — sistemas abiertos)
 
 Fichero **mensual** de movimientos de póliza/recibo para el sistema de "sistemas abiertos" de MAPFRE. Nombre por defecto `BUZON_MENSUAL_{MMYYYY}_CARREFOUR`.
