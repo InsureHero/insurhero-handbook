@@ -124,6 +124,38 @@ yarn test:e2e
 yarn test:all
 ```
 
+## Logging
+
+En `apps/next` solo están permitidos **`console.warn`** y **`console.error`**. Lo impone la regla `no-console` de `apps/next/.eslintrc.cjs`:
+
+```js
+"no-console": ["error", { allow: ["error", "warn"] }]
+```
+
+`log`, `info` y `debug` no están permitidos —tampoco `debug`, que acaba en el mismo destino que `log` en los logs de producción—. Los archivos de test quedan exceptuados con un `override` para `**/*.test.ts`, `**/*.test.tsx` y `**/*.spec.ts`.
+
+El script de lint corre con `--max-warnings=0`, así que un `console.log` nuevo rompe el build.
+
+### Qué nivel usar
+
+| Nivel | Cuándo |
+|---|---|
+| `console.error` | La operación falló y devolvió un resultado de fallo, o un reintento se abandonó definitivamente. |
+| `console.warn` | La operación decidió no hacer nada: precondición no cumplida, entidad inexistente, estado ya resuelto, sin ficheros que enviar. |
+| Ninguno | Traza de progreso del happy path, o resultado que ya queda persistido (`integration_emissions`) o notificado. No se loguea. |
+
+### Nunca en un log
+
+No se imprimen **tokens** (ni completos ni su longitud), **payloads completos** de request/response, ni **PII** de asegurados (nombre, documento, email, teléfono, domicilio). Los logs de adaptadores y rutas de integración llevan solo identificadores internos, nombres de proveedor y contadores. Ver [Privacidad y Datos](/gobernanza/privacidad-y-datos).
+
+### Excepciones
+
+Los pocos `console.log` / `console.info` que sobreviven llevan `eslint-disable-next-line no-console` con la razón escrita al lado (por ejemplo, un log asertado por un test, o el resumen de una corrida de cron). Sin esa justificación explícita no se agregan, y no se amplía el allow-list de la regla.
+
+### Dónde terminan
+
+Los logs de servidor (adaptadores, rutas de integración, middleware) viven **solo en los logs de la plataforma**: hoy no hay captura server-side en un servicio externo. La visibilidad operativa de fallos de emisión llega por otro canal —Discord y el correo diario—, ver [Alertas: Discord, correo y Supabase](/integraciones/alertas-operacion).
+
 ## Linting y Formato
 
 ### Linting
