@@ -34,9 +34,11 @@ Aplicación principal que contiene:
 
 Tipos TypeScript generados y compartidos:
 
-- Tipos de base de datos generados desde Supabase
+- Tipos de base de datos generados desde Supabase (`src/types/generated-database.types.ts`, vía `yarn gen:db-types` contra el proyecto DEV). `database.types.ts` los re-exporta tal cual (`Database`, `Tables<T>`, `TablesInsert<T>`, `TablesUpdate<T>`, `Json`) sin overrides manuales
 - Tipos de dominio del negocio
 - Tipos compartidos entre apps y packages
+
+Detalle de uso y convenciones: [Interfaces y contratos TypeScript](../guias-desarrollo/interfaces-y-contratos-typescript.md).
 
 ### packages/utils
 
