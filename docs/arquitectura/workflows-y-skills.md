@@ -61,7 +61,7 @@ El nodo `source`/`query` carga registros de nuestro propio modelo (risk items, �
 
 Los nodos que hablan con el exterior no llevan secretos en la definición del flow; referencian **recursos** que viven fuera:
 
-- **Connections propias del canal** (`channel_connections`): http/webhook/sftp del canal. El secreto se guarda **cifrado at-rest** (AES-256-GCM) y **nunca** se devuelve al cliente; en el picker aparecen como *“Your connections”*.
+- **Connections propias del canal** (`channel_connections`): http/webhook/sftp del canal. El secreto se guarda **cifrado at-rest** (AES-256-GCM) y **nunca** se devuelve al cliente; en el picker aparecen como *“Your connections”*. Todas las operaciones del router (`select`, `insert`, `update`, `delete`) exigen `channel_id` y filtran por él además del `id` — defensa en profundidad sobre la RLS de la tabla, que ya resuelve la pertenencia vía `admins_by_channels`.
 - **Adapters globales de InsureHero** (registro `integrations`: Phoenix, AMA/MAPFRE, MAWDY, SFTP), habilitados por canal mediante una **allow-list explícita** (`channel_integrations`). El motor **rechaza** ejecutar un adapter no habilitado para el canal del flow —aunque el slug esté forzado a mano en la definición— y marca el run como fallido (defensa en profundidad).
 - **Templates de email** channel-scoped: el nodo email resuelve el `template_id` **en vivo** desde `email_templates` en cada ejecución (editar el template se refleja sin re-guardar el flow).
 

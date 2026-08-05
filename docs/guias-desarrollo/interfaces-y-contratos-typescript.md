@@ -18,6 +18,37 @@ Cómo definir **tipos e interfaces** nuevos sin fragmentar el modelo de dominio:
 
 Regla práctica: si **dos módulos** (por ejemplo `trpc` y una `route.ts`) necesitan el mismo shape de dominio, el tipo **sube** a `packages/types` o al contrato compartido que ya use el core.
 
+## Tipos de base de datos (Supabase)
+
+Las filas de BD **no se escriben a mano**: se generan contra el proyecto Supabase de **DEV** con
+
+```bash
+yarn gen:db-types
+```
+
+que reescribe `packages/types/src/types/generated-database.types.ts` (y encadena format + `yarn compile`). `database.types.ts` solo **re-exporta** lo generado — `export type Database = DatabaseGenerated;` más el helper `Tables<T>` — sin overrides manuales de tablas encima: el archivo generado es la única fuente de verdad del schema, y una tabla o columna que falte ahí se arregla **regenerando**, no parcheando el tipo.
+
+Helpers disponibles desde `@insureHero/types`:
+
+| Helper | Para qué |
+|--------|----------|
+| `Database` | Generic del cliente: `SupabaseClient<Database>`, `createClient<Database>(...)` |
+| `Tables<"flows">` | Fila completa (`Row`) de una tabla |
+| `TablesInsert<"workflows">` | Shape de un `insert` (respeta NOT NULL y defaults) |
+| `TablesUpdate<"channel_connections">` | Shape de un `update` (campos opcionales) |
+| `Json` | Columnas JSONB |
+
+Reglas al escribir código que consulta Supabase:
+
+- **Tipa el cliente.** Un helper que recibe el cliente declara `SupabaseClient<Database>`, no `SupabaseClient` pelado; con el genérico ausente, `.from(...)` cae en el overload `any` de postgrest-js y se pierde todo el chequeo aunque los tipos existan.
+- **`select` parcial → `Pick`.** Si la consulta trae unas pocas columnas, tipa con `Pick<Tables<"flow_triggers">, "flow_id" | "filters">` en vez de redeclarar el shape a mano.
+- **Nada de shims de tipos.** Patrones como `type Loose = { from: (table: string) => any }` o `data as unknown as MiFila[]` para esquivar tipos faltantes están fuera: `any` está prohibido (`strict: true` en todo el monorepo).
+- **Los joins pueden necesitar un cast puntual** cuando el inferidor de Supabase no resuelve bien la relación (p. ej. un `!inner`). Se acota a esa expresión y se documenta; nunca se degrada el cliente completo.
+
+### Zod y columnas obligatorias
+
+El schema Zod del borde (tRPC / Shield) es el contrato de entrada: si no exige lo que la tabla exige, el `insert` solo compila a base de casts y el fallo aparece en runtime (o lo tapa un trigger con default). Al agregar o volver obligatoria una columna, actualiza también la validación y los formularios que la alimentan — hoy, por ejemplo, `v.workflow.insert()` exige `channel_id` y `validation_schema` en línea con el `Insert` real de `workflows`.
+
 ## Contrato del adaptador (`InsuranceAdapter`)
 
 Los adaptadores de aseguradora implementan el contrato definido en el código (p. ej. `integrations/contracts/insurance-adapter.contract.ts` — nombre exacto según repo). Al añadir un proveedor:
