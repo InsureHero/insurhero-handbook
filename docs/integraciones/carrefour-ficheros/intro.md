@@ -28,7 +28,7 @@ integration_emissions (SUCCESS/FAILED)  +  temp_carriers_orders (status = sent)
 
 ### 1. Generación (disparada por la orden)
 
-Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-commit) hacia `POST /api/integrations/carrefour-payments/order`. El handler:
+Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-commit) hacia `POST /api/integrations/carrefour-payments/order`. Hay además triggers `AFTER UPDATE` —uno sobre `orders` y otro sobre `risk_items` para cuando el estado pasa a cancelado— que llaman al mismo endpoint con **`update: true`**; ese flag es lo que habilita las puertas de anulación y la exclusión de registros pendientes descrita más abajo. El handler:
 
 - Carga el **contexto**: `auth_config` de la fila `integrations`, el `risk_item`, la `order` y el **`timezone` del canal**.
 - **Resuelve qué reports aplican** al canal recorriendo `auth_config.<bloque>.channels[]` por `id_channel`.
@@ -36,9 +36,21 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 
 ### 2. Persistencia: `temp_carriers_orders`
 
-Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` → `failed`) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
+Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` / `failed`, o `cancelled` si el risk item se cancela antes de que la fila llegue a despacharse) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
 
 Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`), donde se permiten varias filas.
+
+#### Cancelación del risk item: los registros pendientes no viajan
+
+Cuando el handler recibe un evento con `update: true` y el `risk_item` **ya quedó cancelado**, antes de generar cualquier register nuevo marca como **`cancelled`** las filas de `temp_carriers_orders` de ese `risk_item` que sigan en `pending`. Como el despacho solo consolida filas `pending`, esos registros dejan de viajar en su fichero. El caso típico es una emisión y su cancelación el **mismo día**: el register de `PAYMENTS_DAILY` generado en la emisión no llega al fichero de cobros de ese día.
+
+Detalles del comportamiento actual:
+
+- **Allow-list de slugs**: solo entran `PAYMENTS_DAILY` y `RIC_*`. `EIAC_*`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2` y `MIC_*` quedan fuera a propósito — EIAC porque el alta (`NP`) y la anulación (`AN`) deben viajar juntas, y `OPEN_SYSTEMS_V2` porque su número de movimiento se reserva con `nextval()` al insertar la fila: cancelarla dejaría un hueco en la numeración que ve Carrefour.
+- **Sin filtro de fecha**: `status = pending` ya significa "todavía no se envió" (solo un despacho exitoso pasa la fila a `sent`), así que se cancela cualquier registro pendiente del risk item sin importar cuántos días lleve esperando.
+- **Corre antes del loop por slug**: los registros que ESTE mismo request va a insertar (p. ej. el `EIAC_POLIZAS_AN` que se genera justo por esta cancelación) todavía no existen cuando se ejecuta el `UPDATE`, así que no se ven afectados y viajan con normalidad.
+- Va **aislada en su propio `try/catch`**: un fallo no aborta el procesamiento del resto de los slugs y queda visible en la respuesta como una entrada de `results` con `slug: "SCRUM-313_SAME_DAY_GATE"`.
+- En RIC, si la fila ya quedó `cancelled`, el append de la operación de baja sobre esa fila no se aplica; la respuesta lo distingue (`RIC append: row-cancelled`) en vez de reportar un `ok` genérico.
 
 ### 3. Consolidación y despacho (cron por canal)
 
