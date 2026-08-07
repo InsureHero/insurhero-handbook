@@ -37,7 +37,7 @@ Registro de información de clientes, pólizas, intervinientes y contactos.
 | `RIC_MONTHLY_INTERVINIENTES` | Consolidado mensual de intervinientes. |
 | `RIC_MONTHLY_CONTACTOS` | Consolidado mensual de contactos. |
 
-Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden.
+Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden. En una modificación o baja las líneas se **appendean** a la fila ya existente de la orden, salvo que esa fila haya quedado `cancelled` por la cancelación del risk item (ver [pipeline](./intro.md)): en ese caso no se toca, porque el alta tampoco viajó.
 
 ## OPEN_SYSTEMS / OPEN_SYSTEMS_V2 (SSAA — sistemas abiertos)
 
@@ -62,6 +62,8 @@ Se generan en alta (creación) y en cancelación; no en modificaciones que no se
 ## PAYMENTS_DAILY (delimitado por `;`)
 
 Movimientos de **pago** diarios. Cada línea lleva el tipo y valor del identificador del asegurado, el producto, el **signo** (`+` / `-`) y el **importe** de la orden.
+
+No tiene puerta propia de generación: el register se crea en la emisión y se consolida **sin ventana de fechas** (a diferencia de los EIAC diarios). Si el risk item se cancela antes de que la fila se despache, esa fila se marca `cancelled` y no llega al fichero de cobros — ver [pipeline](./intro.md).
 
 ## Referencias
 
