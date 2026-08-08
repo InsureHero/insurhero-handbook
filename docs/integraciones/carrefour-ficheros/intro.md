@@ -67,7 +67,7 @@ Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
 
 - **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad y parámetros propios de la familia (p. ej. la `clase` de EIAC).
-- **`channels[]`** — por canal (`id_channel`): credenciales SFTP, `send_time` / `read_time` y los mapeos que cada familia necesita.
+- **`channels[]`** — por canal (`id_channel`): credenciales SFTP, `send_time` / `read_time` y los mapeos que cada familia necesita. En EIAC esos mapeos son dos listas: **`policies[]`** (indexada por `policy_uid`) y **`packages[]`** (indexada por nombre de paquete, de donde sale `ModalidadRamo`). En ambas, una entrada faltante deja los campos dependientes vacíos para ese registro y emite un warning, sin tumbar la generación del fichero.
 
 La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `skip_weekends`) determina la fecha de cierre que se estampa en el fichero.
 
