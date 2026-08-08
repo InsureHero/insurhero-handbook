@@ -25,19 +25,25 @@ Emisión, recibos y anulación de pólizas en XML.
 
 Los diarios (`EIAC_POLIZAS_NP`, `EIAC_POLIZAS_AN`, `EIAC_RECIBOS_NP`) se consolidan por **ventana de 24 h** en el timezone del canal. La cabecera XML lleva una `clase` configurada en el report.
 
+El código de modalidad (`ModalidadRamo`, dentro de `DatosRamo`) depende del **paquete**, no de la póliza: varios productos Carrefour comparten el mismo `policy_uid`, así que la config indexada por póliza no puede distinguirlos. Se resuelve —tanto en pólizas como en recibos— contra `auth_config.EIAC.channels[].packages[]`, buscando por **nombre de paquete** con match exacto; `DescripcionModalidad` sigue llevando ese mismo nombre. Un paquete sin entrada en esa lista no rompe la generación: ese registro sale con `ModalidadRamo` vacío y un `console.warn` señalándolo.
+
 ## RIC (ancho fijo, estándar MAPFRE)
 
 Registro de información de clientes, pólizas, intervinientes y contactos.
 
 | Slug | Qué representa |
 |------|----------------|
-| `RIC_DAILY` | Fichero **diario** multi-tabla: cliente, póliza, interviniente y contacto en un mismo envío. |
+| `RIC_DAILY` | Fichero **diario** multi-tabla: cliente, póliza, interviniente y contacto en un mismo envío (en cancelación, solo póliza e interviniente). |
 | `RIC_MONTHLY_CLIENTES` | Consolidado **mensual** de clientes. |
 | `RIC_MONTHLY_POLIZAS` | Consolidado mensual de pólizas. |
 | `RIC_MONTHLY_INTERVINIENTES` | Consolidado mensual de intervinientes. |
 | `RIC_MONTHLY_CONTACTOS` | Consolidado mensual de contactos. |
 
 Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden.
+
+En **cancelación**, `RIC_DAILY` emite solo **dos** líneas —póliza e interviniente—: el cliente y los medios de contacto **no** se dan de baja. En alta y modificación emite las de siempre: cliente, póliza, interviniente y una línea de contacto por canal presente (1 a 3). Los consolidados mensuales no llevan esta puerta: cada uno sigue emitiendo su registro de entidad única con el código de operación que corresponda.
+
+La fecha de anulación de póliza (`FEC_ANUL_POL`) solo se informa cuando la operación es **baja**; en alta y modificación viaja en blanco, sea cual sea la fecha de fin de vigencia del risk item (que por defecto es un valor centinela lejano, no una fecha real).
 
 ## OPEN_SYSTEMS / OPEN_SYSTEMS_V2 (SSAA — sistemas abiertos)
 
