@@ -47,6 +47,7 @@ Cada capa tiene ubicaciones físicas concretas dentro del monorepo:
 - `apps/next/supabase/`
 - `apps/next/src/validations/`
 - `@insureHero/types`
+- `@insureHero/shield-contract`
 
 ### Capa F — Observabilidad
 - `apps/next/src/app/api/integrations/dispatch/`

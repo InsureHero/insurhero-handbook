@@ -68,7 +68,9 @@ Turborepo orquesta las dependencias según `turbo.json`:
    - `@insureHero/types`
    - `@insureHero/utils`
    - `@insureHero/builders`
-2. **App Next.js después** (`apps/next`) — consume los paquetes ya compilados.
+   - `@insureHero/shield-contract`
+   - `@insureHero/iml`
+2. **Apps después** (`apps/next`, `apps/riskbench`) — consumen los paquetes ya compilados.
 
 Si el build falla en cualquier paso, Vercel **bloquea el deploy** y marca el PR con estado rojo.
 
@@ -116,11 +118,19 @@ Aplica Prettier sobre todo el código. Correr antes de commitear para evitar que
 
 ### Regenerar tipos de Supabase
 
-Cuando cambias el esquema de BD:
+Toda migración que cambie el **esquema** (tablas, columnas, tipos, enums) obliga a regenerar los tipos. Las migraciones que solo mueven datos, no.
 
 ```bash
-supabase gen types typescript --project-id  > packages/types/src/types/generated-database.types.ts
+yarn gen:db-types
 ```
+
+El script escribe `packages/types/src/types/generated-database.types.ts` y luego corre `format` y `compile`. Reglas que acompañan al comando:
+
+| Regla | Detalle |
+|-------|---------|
+| **Orden obligatorio** | Aplicar la migración en DEV → `yarn gen:db-types` → commitear `generated-database.types.ts` en el mismo PR. |
+| **Lee de DEV remoto** | El script consulta el proyecto Supabase de DEV, **no** los archivos de `supabase/migrations/`. Correrlo antes de aplicar la migración genera tipos sin los cambios, en silencio y sin error. |
+| **Nunca editar a mano** | Si no hay acceso a DEV, el ticket queda bloqueado en ese punto: no se parchea el archivo generado. |
 
 Estos tipos alimentan `check-types` — si no se regeneran tras un cambio de esquema, el build local falla.
 
