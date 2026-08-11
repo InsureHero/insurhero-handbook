@@ -12,6 +12,7 @@ Cómo definir **tipos e interfaces** nuevos sin fragmentar el modelo de dominio:
 | Ubicación | Uso típico |
 |-----------|------------|
 | **`packages/types`** | Tipos compartidos entre apps, contratos estables, reexportaciones. Tras cambios: `yarn compile` en el workspace. |
+| **`packages/shield-contract`** | Schemas **zod** del contrato Shield (primitivas, dominio de pagos v2, entidad risk item, estados). Fuente única: `apps/next` y `apps/riskbench` los consumen; los archivos de validaciones de `apps/next` **re-exportan** desde aquí. Para cambiar un schema compartido se edita el package, no el re-export. |
 | **`apps/next/src/types`** (o equivalente) | Tipos **solo del front** o capa de presentación cuando no deben ir al paquete compartido. |
 | **`src/integrations/contracts/`** | Contratos de integración: p. ej. forma del **`InsuranceAdapter`**, payloads hacia/desde adaptadores. No mezclar con tipos de UI. |
 | **Tipos generados (Supabase)** | Entidades y filas de BD; no duplicar a mano si el generador ya los produce. |

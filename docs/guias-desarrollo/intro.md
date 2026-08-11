@@ -50,8 +50,11 @@ yarn compile
 5. Iniciar desarrollo:
 
 ```bash
-yarn dev
+yarn start:next   # apps/next en :3000
+yarn start:lab    # apps/riskbench en :3100
 ```
+
+`yarn dev` corre `yarn workspaces run dev`, que con Yarn 1 ejecuta los workspaces **en serie**: el primer watcher bloquea y el resto no arranca. Para levantar una app usar `start:next` o `start:lab`.
 
 ## Landing page Vidanta (repositorio aparte)
 
