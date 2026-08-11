@@ -56,6 +56,17 @@ Usa placeholders evidentes:
 
 El paquete `@insureHero/builders` provee factories para generar datos sintéticos consistentes con los schemas Zod del sistema. Úsalos siempre que sea posible en lugar de inventar datos manualmente.
 
+## PII en los reportes de error
+
+La misma regla aplica en runtime: **el monitor de errores no es un lugar donde pueda quedar PII**.
+
+- Todo evento que sale hacia Sentry pasa por un saneo central (`beforeSend`) que redacta el subárbol completo de las claves sensibles conocidas (identificadores, datos de persona, pagos, beneficiarios, sujeto asegurado).
+- La lista es compartida entre el reporte de UI y el server-side, así que ampliarla **reduce visibilidad de debug** en Shield y tRPC: se agrega solo lo que sea PII de verdad.
+- Los errores de validación de formularios reportan **nombres de campo**, nunca valores.
+- Al escribir un `catch` que reporta, no metas el objeto de dominio entero en el contexto solo por comodidad: pasa lo mínimo que sirva para diagnosticar.
+
+Detalle técnico y lista de claves: [Alertas y observabilidad → Sentry](../integraciones/alertas-operacion).
+
 ## Cuando dudes, pregunta
 
 Si tienes duda sobre si un dato es sensible o si una operación viola estas políticas, **detente y consulta** con el Tech Lead antes de pegar el contenido en una herramienta de IA.
