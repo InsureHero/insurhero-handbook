@@ -9,7 +9,7 @@ Bienvenido a las guías de desarrollo de InsureHero. Aquí se concentra el **có
 | [Estructura base y extensión](./estructura-base-y-extension.md) | Qué partes son “base” estable, por dónde extender (adaptadores, rutas, tRPC) y anti‑patrones. |
 | [Interfaces y contratos TypeScript](./interfaces-y-contratos-typescript.md) | Dónde definir tipos, `InsuranceAdapter`, `StandardRiskItem`, Zod en bordes. |
 | [Nuevas rutas Shield](./nuevas-rutas-shield.md) | Checklist para endpoints bajo `/api/shield`, namespaces y versionado. |
-| [Guía de componentes](./componentes.md) | Componentes React, carpetas, formularios, estilos. |
+| [Guía de componentes](./componentes.md) | Componentes React, carpetas, formularios, estilos y reporte de errores de la UI. |
 | [Guía de tRPC](./trpc.md) | Routers, procedimientos y uso en cliente. |
 | [Landing page Vidanta](./landing-page-postventa.md) | Repo aparte (`landing-next`), variables y flujo post‑sales. |
 

@@ -145,7 +145,7 @@ export const integracionesHubItems: IntegracionHubItem[] = [
     id: 'alertas',
     title: 'Alertas y Supabase',
     description:
-      'Discord en tiempo real, correos por skill y Edge Functions con cron (pg_cron) para reportes.',
+      'Sentry para errores de UI, tRPC y Shield; Discord en tiempo real, correos por skill y Edge Functions con cron (pg_cron) para reportes.',
     ficha: {label: 'Alertas y operación', to: '/integraciones/alertas-operacion'},
     apis: [{label: 'Workflows y skills (contexto)', to: '/arquitectura/workflows-y-skills'}],
     flujos: [
