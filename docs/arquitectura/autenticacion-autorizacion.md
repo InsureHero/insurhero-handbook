@@ -48,7 +48,7 @@ Los privilegios son **flags booleanos** agrupados por dominio funcional del dash
 |---------|-------------------------|
 | Usuarios / grupos / agentes | `can_view_users`, `can_create_users`, `can_edit_users`, `can_view_agents`, `can_create_or_modify_agents` |
 | Reclamos | `can_view_all_claims`, `can_create_claims`, `can_edit_claims` |
-| Risk items | `can_view_risk_items`, `can_create_risk_items`, `can_edit_risk_items`, `can_view_events`, **`can_download_risk_items`** |
+| Risk items | `can_view_risk_items`, `can_create_risk_items`, `can_edit_risk_items`, `can_view_events`, **`can_download_risk_items`**, **`can_view_risk_items_example`** |
 | Pólizas / paquetes | `can_view_policies`, `can_create_policies`, `can_edit_policies`, `can_view_packages` |
 | Workflows / acciones | `can_view_workflows`, `can_create_workflows`, `can_edit_workflows`, `can_view_actions`, … |
 | Plantillas de email | `can_view_emails_templates`, `can_create_emails_templates`, `can_edit_emails_templates` |
@@ -57,9 +57,28 @@ Los privilegios son **flags booleanos** agrupados por dominio funcional del dash
 Cómo se aplican:
 
 - **Visibilidad de páginas**: un mapa privilegio→página (`pageAccessMap`) decide qué secciones del dashboard ve el admin; las que no tiene habilitadas se ocultan.
-- **Acciones puntuales**: privilegios específicos gatean operaciones concretas. Por ejemplo, **`can_download_risk_items`** habilita la **exportación / descarga de risk items** en el backoffice.
-- **Bypass de super-admin**: un **`SUPER_ADMIN`** salta la comprobación de privilegios (y de canal) — ve y puede todo, sin depender de la lista.
+- **Acciones puntuales**: privilegios específicos gatean operaciones concretas. Por ejemplo, **`can_download_risk_items`** habilita la **exportación / descarga de risk items** en el backoffice, y **`can_view_risk_items_example`** habilita el botón **“Generate Example”** de `/risk-items` (ver [Risk item](./risk-item.md)).
+- **Bypass de super-admin, con excepciones**: por defecto un **`SUPER_ADMIN`** salta la comprobación de privilegios (y de canal). Hay excepciones explícitas: si **`can_view_batch_jobs`** o **`can_view_risk_items_example`** están en **`false`** de forma explícita, esa vista/acción queda oculta **también para `SUPER_ADMIN`**. La ausencia del flag no oculta nada para ese rol.
 - Los privilegios del admin en sesión se cargan en el cliente (procedimiento tRPC `agents.selectAgentLoggedIn`) y se asignan desde la gestión de agentes/usuarios.
+
+#### De dónde se resuelve cada privilegio
+
+El gate de páginas en los server components (`canAccess`) lee los privilegios de la **fila del canal activo** (`admins_by_channels.privileges`): esa fila es la prueba de pertenencia al canal, así que un privilegio global nunca puede dar acceso cross-tenant. Hay además un resolutor compartido (`resolveAdminPrivileges`, usado por el menú lateral y por el router tRPC de batch jobs) donde un `SUPER_ADMIN` resuelve desde su **blob global** (`admins.privileges`) y el resto de los roles desde la fila del canal.
+
+**`can_view_risk_items_example` no pasa por ese resolutor global**: se resuelve **siempre desde la fila del canal**, para todos los roles, `SUPER_ADMIN` incluido. El motivo es que solo se edita desde la pantalla de actualización del miembro del equipo (`/settings/team/{id}/update`), que escribe en la fila del canal; resolverlo desde el blob global haría que ese cambio no tuviera efecto para un `SUPER_ADMIN`.
+
+Resumen del gate del botón “Generate Example” en `/risk-items`:
+
+| Rol | `can_view_risk_items_example` en la fila del canal | Ve el botón |
+|-----|---------------------------------------------------|-------------|
+| `SUPER_ADMIN` | ausente o `true` | ✅ |
+| `SUPER_ADMIN` | `false` explícito | ❌ |
+| Otros roles | `true` | ✅ |
+| Otros roles | ausente o `false` | ❌ |
+
+Además del privilegio, el botón solo aparece si el admin tiene `can_create_risk_items` y no es `INSURER_USER`, igual que el resto de acciones de alta de esa pantalla.
+
+En la vista de roles, este privilegio aparece como la opción **“Generate Risk Item Example”** dentro del selector de privilegios de tipo *view* (el prefijo `can_view_` no es cosmético: las pantallas de edición agrupan las keys guardadas por ese prefijo).
 
 ## Middleware
 
