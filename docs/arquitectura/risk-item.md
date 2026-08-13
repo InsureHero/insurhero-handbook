@@ -44,6 +44,22 @@ Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integracio
 
 Ejemplos `curl` mínimos: [Shield: flujos y ejemplos](../api-reference/shield/flujos-y-ejemplos.md).
 
+## “Generate Example”: payload de ejemplo desde el dashboard
+
+La pantalla `/risk-items` del backoffice incluye el botón **“Generate Example”**, que abre un modal para armar un **payload de creación de risk item de ejemplo** alineado a la configuración del canal: eliges **póliza** y luego **paquete**, y el ejemplo se genera con esos `policy_uid` / `package_uid` reales.
+
+Qué produce hoy:
+
+- **`insured_subject`** se genera a partir del **`subject_schema`** de la póliza seleccionada, respetando tipo (`string`, `number`, `boolean`, `object`, `array`), `pattern` y los rangos `minLength`/`maxLength` y `minimum`/`maximum`.
+- Cuando el campo **tiene `pattern`**, se usa un ejemplo conocido para los regex más habituales (email, fecha, tarjeta, placa, etc.) o un valor generado a partir de la expresión.
+- Cuando **no tiene `pattern`**, el valor se elige por **nombre de campo** para que el ejemplo sea legible y copiable sin retoques: `firstName` → `"John"`, `lastName` → `"Doe"`, `gender` → `"Male"`, `nationality` → `"American"`, `dob` / `dateOfBirth` / `birthDate` → `"1990-05-14"`, y similares para ciudad, país, dirección u ocupación. Son valores genéricos, no atados a ningún carrier.
+- Los campos que **parecen teléfono** por su nombre (`phone`, `mobile`, `celular`, `telefono`) reciben dígitos variados. Un nombre no contemplado cae en un relleno legible (`"ExampleValue"`) ajustado a la longitud pedida — nunca un solo carácter repetido.
+- **`start_date` / `end_date`** son dinámicos: hoy y hoy + 1 año. El resto del payload (`status`, `uid`, `beneficiaries`, `authorized_claimants`, `metadata`) sale de un bloque de muestra fijo, editable en el propio JSON.
+
+El modal es **enteramente client-side**: el ejemplo no se persiste ni se registra en ningún lado. Junto a “Generate Example” conviven **“Test”**, que valida el JSON editado contra la póliza y el paquete seleccionados y devuelve el resultado por toast, y **“Copy”**.
+
+La visibilidad del botón depende del privilegio **`can_view_risk_items_example`** — ver [Autenticación y autorización](./autenticacion-autorizacion.md).
+
 ## Lecturas relacionadas
 
 - [Estructura jerárquica de productos](./estructura-jerarquica-productos.md) — Catálogo previo al risk item.
