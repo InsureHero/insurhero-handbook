@@ -60,6 +60,15 @@ El **Canal** es el nivel más alto de la jerarquía y representa una entidad que
   - Se establece al crear el canal y **no puede modificarse** después
   - Referencia a la tabla `countries`
 
+- **Industria (industry_id)**:
+  - Clasifica al canal por el sector en el que opera
+  - Referencia a la tabla `industries`, un **catálogo global** (sin `channel_id`, de solo lectura) con la misma forma que `countries` / `currencies`
+  - Obligatorio al **crear** el canal; opcional al editarlo (los canales anteriores a su introducción quedan en `NULL`)
+
+- **Tipo de despliegue (deployment_type)**:
+  - Registra el modelo de despliegue del canal. Enum de Postgres (`public.deployment_type`) con dos valores: `distribution` (canal de distribución) e `internal` (uso interno)
+  - Obligatorio al **crear** el canal; opcional al editarlo, y nullable en base de datos
+
 - **Configuración General**:
   - `name`: Nombre del canal
   - `api_key`: Clave API única para integraciones
@@ -78,6 +87,8 @@ CREATE TABLE "channels" (
     id uuid PRIMARY KEY,
     currency_id uuid NOT NULL,  -- Moneda del canal
     country_id uuid NOT NULL,   -- País del canal
+    industry_id uuid,           -- Industria del canal (FK a industries, nullable)
+    deployment_type public.deployment_type, -- 'distribution' | 'internal' (nullable, sin default)
     name text NOT NULL,
     api_key uuid NOT NULL,
     status text DEFAULT 'ACTIVE',
@@ -86,6 +97,25 @@ CREATE TABLE "channels" (
     -- ... otros campos
 );
 ```
+
+El catálogo de industrias vive aparte, como tabla global de solo lectura:
+
+```sql
+CREATE TABLE "industries" (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    status text NOT NULL DEFAULT 'ACTIVE',
+    name text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    deleted_at timestamptz
+);
+-- RLS: policy SELECT `USING (true)` para `authenticated`; sin escritura desde la app
+```
+
+El set inicial de industrias se siembra por migración (Insurance, Financial Services,
+Retail & E-commerce, Automotive & Mobility, Travel & Transportation, Technology &
+Platforms, Hospitality, etc.). No hay ABM de industrias desde la UI: para agregar una
+nueva se necesita una migración.
 
 ---
 
@@ -403,7 +433,7 @@ Cálculo:
 
 | Nivel | Moneda | Precios | Reglas | Esquemas | Otros |
 |-------|--------|---------|--------|----------|-------|
-| **Canal** | ✅ (currency_id) | ❌ | ❌ | ❌ | País, API Key, Configuración general |
+| **Canal** | ✅ (currency_id) | ❌ | ❌ | ❌ | País, Industria, Tipo de despliegue, API Key, Configuración general |
 | **Producto** | ❌ (hereda) | ✅ (pricing JSONB) | ❌ | ❌ | Código, Features, Lifecycle, Overrides |
 | **Paquete** | ❌ (hereda) | ❌ | ✅ (pricing_rules JSONB) | ❌ | Nombre, Descripción |
 | **Variante** | ❌ (hereda) | ✅ (gross_price, taxes, markup) | ✅ (pricing_rules JSONB) | ✅ (subject_schema, claim_schema) | Límites, Deducible, Condiciones, Exclusiones |

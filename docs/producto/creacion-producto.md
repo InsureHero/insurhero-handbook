@@ -32,6 +32,8 @@ Según el schema de Supabase, un canal tiene estos campos principales:
 | `name` | `text` | Nombre del canal (ej: "Mi Aseguradora") | Sí |
 | `currency_id` | `uuid` | **Moneda del canal** (FK a tabla `currencies`) | ❌ **NO** |
 | `country_id` | `uuid` | **País de operación** (FK a tabla `countries`) | ❌ **NO** |
+| `industry_id` | `uuid` | **Industria** en la que opera el canal (FK a tabla `industries`, catálogo global) | Sí (obligatorio al crear) |
+| `deployment_type` | `deployment_type` | **Modelo de despliegue**: `distribution` (canal de distribución) o `internal` (uso interno) | Sí (obligatorio al crear) |
 | `api_key` | `uuid` | Clave de API para integraciones | Generado automáticamente |
 | `status` | `text` | Estado: 'ACTIVE' o 'INACTIVE' | Sí |
 | `email` | `text` | Email de contacto | Sí |
@@ -48,6 +50,8 @@ Según el schema de Supabase, un canal tiene estos campos principales:
   "name": "Seguros ABC",
   "currency_id": "123e4567-e89b-12d3-a456-426614174000",  // USD
   "country_id": "789e0123-e45b-67c8-d901-234567890abc",  // México
+  "industry_id": "3f2a1b90-c4d5-4e6f-8a9b-0c1d2e3f4a5b",  // Insurance
+  "deployment_type": "distribution",
   "api_key": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "status": "ACTIVE",
   "email": "contacto@segurosabc.com",
@@ -64,6 +68,7 @@ Según el schema de Supabase, un canal tiene estos campos principales:
 - Todos los productos, paquetes, variantes y coberturas creados en este canal usarán esta moneda y país
 - Si necesitas operar en otro país o moneda, debes crear un nuevo canal
 - **`timezone`** condiciona cómo el backend interpreta “día local” para **skills de notificación** y reportes programados (ver [Notificaciones, skills y Supabase Edge](../arquitectura/notificaciones-skills-supabase.md))
+- **`industry_id`** y **`deployment_type`** son **obligatorios en el formulario de creación** del canal (`/channels/new`). En la edición desde `/settings/account` son opcionales, así que un canal creado antes de que existieran estos campos puede seguir guardándose con ambos en `NULL` (no hay backfill forzado)
 
 ---
 

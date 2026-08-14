@@ -107,6 +107,7 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | Router | Uso habitual |
 |--------|----------------|
 | `channels`, `products`, `packages`, `variants`, `coverages`, … | Configuración de catálogo |
+| `general` | Catálogos globales de solo lectura que alimentan los selects de canal: `general.currencies.select`, `general.countries.select`, `general.industries.select` (cada uno devuelve la tabla completa ordenada por `name`) |
 | `schemaTemplate` | Esquemas de datos de póliza / subject |
 
 ### Riesgo y órdenes
