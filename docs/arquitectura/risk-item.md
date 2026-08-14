@@ -44,6 +44,18 @@ Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integracio
 
 Ejemplos `curl` mínimos: [Shield: flujos y ejemplos](../api-reference/shield/flujos-y-ejemplos.md).
 
+## Generador de ejemplo de payload (dashboard)
+
+En **`/risk-items`** el dashboard ofrece el botón **"Generate Example"**, que arma un JSON de ejemplo del payload de creación de un risk item para copiarlo y probarlo. Es enteramente **client-side**: no persiste ni registra nada, y el ejemplo se construye con la configuración real seleccionada en el modal (póliza, paquete y canal activo).
+
+- **Sujeto asegurado** — se genera recorriendo el `subject_schema` de la **póliza** elegida, incluidos objetos anidados y campos de tipo array. Los campos de texto sin `pattern` toman valores legibles y genéricos (nombre, apellido, género, nacionalidad, fecha de nacimiento, ciudad, teléfono…) respetando `minLength` / `maxLength`.
+- **Vigencia** — `start_date` es la fecha actual y `end_date` un año después.
+- **Pagos** — `payment_model`, `payment_status`, `billing_cycle` y `sale_origin` se eligen desde selects poblados con los valores del contrato Shield; la moneda (`unit_cost_currency`) viene precargada con la **moneda configurada del canal** cuando está entre las soportadas por el contrato, y el `billing_entity` se propone a partir del **nombre del canal** (ambos editables). El `unit_cost` es un campo numérico manual: el precio real lo recalcula el servidor contra el catálogo al crear el risk item.
+- **Consentimientos** — dos casillas opcionales (términos y condiciones, tratamiento de datos) que se traducen a las entradas de `consents`; si se destildan ambas, el ejemplo sale con `consents: []`.
+- El ejemplo también incluye `current_installment`, `metadata.partner_refs` y marca al primer beneficiario como titular (`isHolder: true`).
+
+El botón solo aparece para admins con el privilegio **`can_view_risk_items_example`** (además del permiso de creación de risk items) — ver [Autenticación y autorización](./autenticacion-autorizacion.md).
+
 ## Lecturas relacionadas
 
 - [Estructura jerárquica de productos](./estructura-jerarquica-productos.md) — Catálogo previo al risk item.
