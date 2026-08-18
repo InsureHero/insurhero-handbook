@@ -20,6 +20,68 @@ La API Shield utiliza un sistema de autenticación basado en tokens:
 
 Referencia detallada (tokens por rama, namespaces, ejemplos): [Shield (API nativa)](../api-reference/shield/intro.md).
 
+## Alta de usuarios del dashboard
+
+Solo hay **dos caminos** que crean una fila en `auth.users`:
+
+| Camino | Punto de entrada | Cuándo se crea la fila en `admins` |
+|--------|------------------|------------------------------------|
+| **Self-signup** | Formulario de registro (email + contraseña + nombre) | En el acto, vía trigger de Postgres |
+| **Invitación por correo** | Botón *Invite members* en `/settings/team` | Recién cuando la persona acepta la invitación |
+
+El trigger `insert_admin_for_new_authentication()` (`AFTER INSERT ON auth.users`) distingue ambos casos por **`raw_user_meta_data->>'name'`**: el self-signup siempre lo manda (es campo obligatorio del formulario), la invitación nunca. Si llega nulo, el trigger no inserta nada y el alta queda diferida al procedimiento de aceptación. En el self-signup el comportamiento es el de siempre: se crea el `admins` con `role = 'CHANNEL_AGENT'`.
+
+### Invitación por correo
+
+La pantalla de Team expone **un solo flujo**: el formulario pide email y privilegios (el mismo selector de privilegios que se usa para editar agentes) y siempre llama a `trpc.invitations.invite`, que decide internamente qué hacer:
+
+- **El email ya existe en `admins`** → se vincula al canal (`admins_by_channels`), igual que antes. Los privilegios del formulario se ignoran en este camino. Si ya era miembro de ese canal, devuelve el error de siempre (`Member already exists in the channel.`).
+- **El email no existe** → se registra la invitación y Supabase envía el correo con `inviteUserByEmail`. El SMTP propio y la plantilla *Invite user* están configurados en el proyecto de Supabase, no en el repo.
+
+`invite`, `resend`, `revoke` y `listPending` están gateados por **`can_create_or_modify_agents`** (el mismo privilegio que da acceso a la página). `accept` no lleva gate: quien acepta todavía no tiene ninguna membresía. Toda escritura de invitaciones pasa por el cliente de **service role**, porque la persona invitada no puede insertarse a sí misma en `admins` / `admins_by_channels` bajo RLS.
+
+### Tabla `channel_invitations`
+
+Tabla channel-scoped con RLS de **solo lectura**: los miembros de un canal ven las invitaciones de ese canal y un `SUPER_ADMIN` las ve todas. No hay policies de INSERT/UPDATE/DELETE — las escrituras van por service role.
+
+| Columna | Notas |
+|---------|-------|
+| `channel_id` | Canal al que se invita |
+| `email` | Destinatario |
+| `role` | Fijo en `CHANNEL_AGENT` (no hay selector de rol al invitar) |
+| `privileges` | JSONB, se aplica al aceptar |
+| `invited_by` | Admin que invitó |
+| `auth_user_id` | Usuario de `auth.users` creado por la invitación |
+| `status` | `pending`, `accepted` o `revoked` |
+| `expires_at` | `created_at` + 24 h |
+| `accepted_at` | Sello de aceptación |
+
+**No existe un estado `expired`**: nada lo escribe. Una invitación `pending` vencida se detecta comparando `expires_at` con el momento de la lectura, tanto en el router como en la tabla de invitaciones pendientes del dashboard (que la muestra como *Expired*).
+
+### Invitaciones multi-canal
+
+Supabase mantiene **un único link de invitación activo por usuario de Auth**, así que las operaciones se razonan sobre el `auth_user_id` compartido por email, no sobre una fila suelta:
+
+- **Invitar el mismo email a un segundo canal** mientras el primero sigue pendiente: no se reenvía el correo (invalidaría el link vivo). Se agrega la fila del canal nuevo reusando el mismo `auth_user_id` y `expires_at`; un solo click activa ambos canales.
+- **Reenviar**: se vuelve a llamar `inviteUserByEmail` y se refresca `expires_at` en **todas** las filas pendientes de ese `auth_user_id`, no solo en la que pidió el reenvío.
+- **Revocar**: marca esa fila como `revoked`. El usuario de `auth.users` solo se borra si no queda ninguna otra fila `pending` con el mismo `auth_user_id`.
+- **Listado**: `listPending` devuelve únicamente las invitaciones pendientes **de ese canal**, aunque compartan email o `auth_user_id` con otras.
+
+### Página de aceptación
+
+`/auth/accept-invite` es pública (vive en el mismo route group que login y reset de contraseña) y sigue el mismo esqueleto de estados `pending` / `ready` / `expired` que la página de reset de contraseña. Al enviar el formulario fija la contraseña (`updateUser`) y, si eso funciona, llama `trpc.invitations.accept`, que **resuelve de una sola vez todas las invitaciones pendientes** de esa persona: crea la fila en `admins` (`CHANNEL_AGENT`) y una membresía por canal con los privilegios de cada invitación; luego redirige a la selección de canal.
+
+Dos particularidades del flujo, ambas distintas del reset de contraseña:
+
+- **El link de invitación es implicit flow** (`#access_token=…`), no PKCE: `inviteUserByEmail` corre en el servidor y no puede generar el `code_verifier` que PKCE exige en el navegador. Por eso la página parsea el hash a mano y establece la sesión con `setSession`, en lugar de apoyarse en la detección automática del cliente de Supabase (que rechazaría el token en silencio).
+- **La redirección post-login tiene un carve-out** para esta ruta: la persona invitada llega con sesión válida pero sin cookie de canal y sin fila en `admins`, así que no se la puede mandar a la selección de canal antes de aceptar.
+
+Ante **cualquier** fallo (token inválido, vencido, revocado o ya usado) la página muestra un único mensaje genérico, para que una página pública no permita deducir si un correo existe.
+
+:::caution Caducidad real del link
+`channel_invitations.expires_at` son 24 h a nivel aplicación, pero el link que emite Supabase caduca según el ajuste global **Email OTP expiration** del proyecto (Authentication → Settings), que también afecta al magic link y al recovery de contraseña. Si ese valor está por debajo de 24 h, manda el de Supabase: el link muere antes de lo que dice la tabla.
+:::
+
 ## Autorización
 
 ### Row Level Security (RLS)
