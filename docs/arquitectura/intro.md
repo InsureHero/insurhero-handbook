@@ -16,6 +16,7 @@ InsureHero es una plataforma de seguros construida con una arquitectura moderna 
 El proyecto está organizado como un monorepo con las siguientes áreas principales:
 
 - `apps/next`: Aplicación principal Next.js
+- `apps/corporate-benefits-portal`: Portal de beneficios para empresa cliente — ver [Corporate Benefits Portal](./corporate-benefits-portal.md)
 - `packages/`: Paquetes compartidos (types, utils, builders)
 
 ## Componentes Principales

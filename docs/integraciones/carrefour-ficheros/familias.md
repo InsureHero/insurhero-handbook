@@ -39,6 +39,8 @@ Registro de información de clientes, pólizas, intervinientes y contactos.
 
 Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden.
 
+La operación no sólo rotula el registro: también **gatea qué campos se informan**. En el registro de póliza, la **fecha de anulación** (`FEC_ANUL_POL`) viaja **sólo en baja**; en alta y modificación va en blanco, sin importar el `end_date` del risk item. Esto evita enviar a MAPFRE el `31/12/2099` que el core usa como fecha de fin por defecto cuando el risk item no tiene vigencia práctica. En baja con `end_date` nulo o inválido el campo también queda en blanco.
+
 ## OPEN_SYSTEMS / OPEN_SYSTEMS_V2 (SSAA — sistemas abiertos)
 
 Fichero **mensual** de movimientos de póliza/recibo para el sistema de "sistemas abiertos" de MAPFRE. Nombre por defecto `BUZON_MENSUAL_{MMYYYY}_CARREFOUR`.

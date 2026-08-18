@@ -7,7 +7,8 @@ InsureHero utiliza un monorepo gestionado con Turbo para optimizar el desarrollo
 ```
 insureHero/                    # raíz del monorepo (nombre local puede variar)
 ├── apps/
-│   └── next/                  # Aplicación principal Next.js
+│   ├── next/                  # Aplicación principal Next.js
+│   └── corporate-benefits-portal/  # Portal de beneficios para empresa cliente
 ├── packages/
 │   ├── types/                 # Tipos TypeScript compartidos
 │   ├── utils/                 # Utilidades compartidas
@@ -27,6 +28,12 @@ Aplicación principal que contiene:
 - **src/trpc/**: Routers y procedimientos tRPC
 - **src/integrations/**: Adaptadores de aseguradoras, orquestador y contratos
 - **supabase/**: Migraciones, configuración y **Edge Functions** (`supabase/functions/`)
+
+### apps/corporate-benefits-portal
+
+App Next.js separada para empleados de empresa cliente. Corre sobre el **mismo proyecto Supabase** que `apps/next` pero con su **propio cliente** (`src/lib/supabase/{client,server}.ts`) y su propio `src/middleware.ts` de sesión: las apps no se importan entre sí, sólo comparten a través de `packages/`.
+
+Detalle del modelo de datos, identidad y RLS: [Corporate Benefits Portal](./corporate-benefits-portal.md).
 
 ## Packages
 

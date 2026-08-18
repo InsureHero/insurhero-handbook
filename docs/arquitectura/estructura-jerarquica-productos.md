@@ -147,6 +147,12 @@ El **Paquete** agrupa variantes relacionadas y define reglas de precios a nivel 
 - **Descripción (description)**:
   - Descripción detallada del paquete
 
+- **Categoría de servicio (category_id)**:
+  - Campo **obligatorio** (`NOT NULL`) con FK a `service_categories`, un catálogo **global** (sin `channel_id`) con las categorías `Viajes`, `Salud`, `Hogar` y `Otros`
+  - Agrupa el paquete por **tipo de servicio**; lo consume el [Corporate Benefits Portal](./corporate-benefits-portal.md) para armar sus secciones
+  - Si un INSERT llega sin categoría, un **trigger `BEFORE INSERT`** la resuelve a **`Otros`** buscándola por nombre (nunca por UUID, que varía entre ambientes). El trigger **no** corrige UPDATEs: dejar `category_id` en `NULL` falla por el `NOT NULL`
+  - El formulario de paquetes del dashboard todavía **no expone un selector** de categoría, así que hoy todo paquete creado desde ahí queda en `Otros`
+
 - **Reglas de Precios (pricing_rules - JSONB)**:
   - **Tipo de precio (pricing_type)**:
     - `one_time`: Pago único
@@ -172,6 +178,7 @@ El **Paquete** agrupa variantes relacionadas y define reglas de precios a nivel 
 CREATE TABLE "packages" (
     id uuid PRIMARY KEY,
     channel_id uuid NOT NULL,
+    category_id uuid NOT NULL,         -- FK a service_categories (default lógico: "Otros")
     name text NOT NULL,
     description text,
     pricing_rules jsonb DEFAULT '{}',  -- Reglas de precios
