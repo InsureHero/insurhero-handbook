@@ -61,6 +61,23 @@ Cómo se aplican:
 - **Bypass de super-admin**: un **`SUPER_ADMIN`** salta la comprobación de privilegios (y de canal) — ve y puede todo, sin depender de la lista.
 - Los privilegios del admin en sesión se cargan en el cliente (procedimiento tRPC `agents.selectAgentLoggedIn`) y se asignan desde la gestión de agentes/usuarios.
 
+### Identidad del Corporate Benefits Portal
+
+El [Corporate Benefits Portal](./corporate-benefits-portal.md) tiene **población de usuarios propia**: son empleados de empresa cliente, distintos de los `admins` del dashboard interno y de `public.users` (directorio de beneficiarios, sin login).
+
+Reusa la misma infraestructura de Supabase Auth (mismo proyecto, mismo `auth.users`, mismo `auth.uid()`), pero con tablas separadas:
+
+| Tabla | Rol |
+|---|---|
+| `corporate_users` | Identidad del usuario de portal. `id` **es** `auth.users.id` (mismo patrón que `admins`). Soporta soft-delete (`deleted_at`) |
+| `corporate_users_by_channels` | Junction usuario ↔ canal, con **rol por canal** (`OWNER` / `OPERATOR`) y `privileges` JSONB como override. UNIQUE `(channel_id, user_id)` |
+
+Diferencias respecto del dashboard:
+
+- El usuario de portal es **multi-canal**: el rol y los privilegios van en la junction, no en la fila de identidad, así que puede ser `OWNER` en una empresa y `OPERATOR` en otra.
+- El portal autentica con **email + contraseña** (`signInWithPassword`) usando su **propio cliente Supabase**, y hace el gating de sesión **server-side** en su middleware.
+- Las policies RLS de las tablas `corporate_*` reconocen **ambas poblaciones**: admin interno vía `admins_by_channels`, o usuario de portal vía `corporate_users_by_channels` (excluyendo soft-deleted), más el bypass de `SUPER_ADMIN`.
+
 ## Middleware
 
 El middleware de Next.js maneja:
