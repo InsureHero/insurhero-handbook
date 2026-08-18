@@ -124,9 +124,35 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Equipo e invitaciones
+
+| Router | Uso habitual |
+|--------|----------------|
+| `team` | Miembros de un canal (`admins_by_channels`): listar, vincular un admin existente, actualizar, quitar |
+| `invitations` | **Invitación de usuarios nuevos por correo** desde Configuración → Team |
+| `agents`, `admins`, `adminsByChannel` | Agentes y privilegios por canal |
+
+El router `invitations` expone `invite`, `resend`, `revoke`, `listPending` y `accept`. Los cuatro primeros están gateados por el privilegio `can_create_or_modify_agents` mediante un middleware propio del router; `accept` no lleva input ni gate (lo llama la persona recién invitada, que todavía no tiene privilegios).
+
+```typescript
+// Invitar: si el email ya existe en admins lo vincula al canal;
+// si no, envía la invitación por correo. Devuelve { linked: boolean }.
+const invite = trpc.invitations.invite.useMutation();
+await invite.mutateAsync({ channel_id, email, privileges });
+
+// Invitaciones pendientes del canal (incluye las vencidas)
+const { data } = trpc.invitations.listPending.useQuery({ channel_id });
+
+// Reenviar / revocar una invitación puntual
+await trpc.invitations.resend.useMutation().mutateAsync({ invitation_id });
+await trpc.invitations.revoke.useMutation().mutateAsync({ invitation_id });
+```
+
+Las mutaciones de este router escriben con **service role** (bypass de RLS), porque la persona invitada no tiene membership todavía. Detalle del modelo de datos, del enlace compartido entre canales y del trigger de `auth.users`: [Autenticación y autorización](../arquitectura/autenticacion-autorizacion.md).
+
 ### Otros
 
-`claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
+`claims`, `workflows`, `skills`, `users`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
 
 ## Llamada desde servidor o scripts (avanzado)
 
