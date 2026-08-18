@@ -124,6 +124,14 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Equipo y accesos
+
+| Router | Uso habitual |
+|--------|----------------|
+| `team` | Miembros del canal: vincular un admin existente, actualizar, quitar |
+| `invitations` | Invitar por correo a alguien que aún no tiene cuenta (`invite`, `resend`, `revoke`, `listPending`, `accept`) — ver [Autenticación y autorización](../arquitectura/autenticacion-autorizacion.md#alta-de-administradores) |
+| `agents` | Privilegios del admin en sesión y de los agentes del canal |
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.

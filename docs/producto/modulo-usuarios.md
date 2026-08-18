@@ -5,6 +5,7 @@ Sin una gestión clara de **identidad y permisos**, ningún seguro a escala se s
 ## Funcionalidades
 
 - **Dar de alta y mantener usuarios** — Creación de cuentas, asociación a un canal o contexto de trabajo, datos de perfil y estado (activo / bloqueado) según políticas internas.
+- **Invitar por correo desde el propio canal** — Desde **Configuración → Team** se invita a alguien que todavía no tiene cuenta: se eligen sus privilegios en el momento de invitar, recibe un enlace de un solo uso con vencimiento, fija su contraseña y entra directamente a su canal. Las invitaciones pendientes se listan aparte de los miembros activos, con acciones de reenviar y revocar. El detalle técnico está en [Autenticación y autorización](../arquitectura/autenticacion-autorizacion.md#alta-de-administradores).
 - **Asignar roles y permisos** — Un administrador de canal no debería ver lo mismo que un agente de ventas o un evaluador de reclamos; el modelo de roles concentra operaciones sensibles (catálogo, emisiones, finanzas, integraciones).
 - **Autenticación y sesiones** — Inicio de sesión, recuperación de acceso y caducidad de sesión; integración con el proveedor de identidad que use el proyecto (Supabase es el estándar en este stack).
 - **Auditoría básica** — Saber **quién** hizo cambios materialmente importantes ayuda en disputas internas y en cumplimiento.
