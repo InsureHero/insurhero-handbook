@@ -124,6 +124,15 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Equipo y accesos
+
+| Router | Uso habitual |
+|--------|----------------|
+| `team` | Miembros del canal: listar, vincular un admin existente, actualizar y quitar |
+| `invitations` | Invitación por correo de usuarios nuevos (`invite`, `resend`, `revoke`, `listPending`, `accept`) |
+
+Los procedimientos de `invitations` — salvo `accept`, que lo llama la persona invitada — exigen el privilegio `can_create_or_modify_agents`. Detalle del flujo: [Autenticación y autorización](../arquitectura/autenticacion-autorizacion.md).
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
