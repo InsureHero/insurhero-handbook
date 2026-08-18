@@ -36,6 +36,7 @@ Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integracio
 
 | Superficie | Uso típico |
 |------------|------------|
+| **Inicio del dashboard** (`/`) | Vista general de risk items, **igual para todos los roles**: tarjeta **New** con las altas del mes seleccionado y su comparativa contra el mes anterior, y debajo la gráfica anual por mes con el total del periodo. Los selectores de mes y año de la cabecera acotan card y gráfica; ambas se limitan al **canal seleccionado** (si no hay canal resuelto, solo se ve la cabecera con los selectores). No hay agregación multi-canal, tampoco para `SUPER_ADMIN`. |
 | **Shield** `.../risk-items`, `.../risk-items/[riskItemId]` | API HTTP para canales e integraciones: listado, detalle, variantes, eventos, cancelación, rescisiones. Ver [Inventario de rutas](../api-reference/shield/inventario-de-rutas.md). |
 | **tRPC** `riskItems` | Pantallas internas del dashboard (ciclo de vida, edición acotada). Ver [tRPC API](../api-reference/trpc-api.md). |
 | **`integrationEmissions`** | Consulta de emisiones por `risk_item_id`, reintentos desde backoffice. |
