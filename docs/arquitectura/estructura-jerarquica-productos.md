@@ -147,6 +147,11 @@ El **Paquete** agrupa variantes relacionadas y define reglas de precios a nivel 
 - **Descripción (description)**:
   - Descripción detallada del paquete
 
+- **Categoría de servicio (category_id)**:
+  - FK **NOT NULL** a `service_categories` (catálogo **global**, sin `channel_id`)
+  - Agrupa el paquete por tipo de servicio (Viajes, Salud, Hogar, Otros) para las superficies que necesitan mostrarlo agrupado
+  - Si un INSERT llega sin categoría, un trigger `BEFORE INSERT` asigna **“Otros”** (detalle más abajo)
+
 - **Reglas de Precios (pricing_rules - JSONB)**:
   - **Tipo de precio (pricing_type)**:
     - `one_time`: Pago único
@@ -174,6 +179,7 @@ CREATE TABLE "packages" (
     channel_id uuid NOT NULL,
     name text NOT NULL,
     description text,
+    category_id uuid NOT NULL,         -- FK a service_categories
     pricing_rules jsonb DEFAULT '{}',  -- Reglas de precios
     -- ... otros campos
 );
@@ -190,6 +196,27 @@ CREATE TABLE "packages" (
   "trial_period": "30"
 }
 ```
+
+#### Catálogo de categorías de servicio (service_categories)
+
+`service_categories` es un catálogo **global del dominio InsureHero**: no cuelga de `channel_id` y lo comparten todos los canales.
+
+```sql
+CREATE TABLE "service_categories" (
+    id uuid PRIMARY KEY,
+    name text NOT NULL UNIQUE,          -- clave estable: se resuelve por nombre
+    sort_order int NOT NULL,            -- orden de presentación
+    is_active boolean NOT NULL DEFAULT true
+);
+```
+
+Filas iniciales (seed): `Viajes` (1), `Salud` (2), `Hogar` (3) y `Otros` (99), todas activas.
+
+Reglas de operación:
+
+- **Resolución por nombre, no por UUID** — el `id` cambia entre ambientes, así que tanto el backfill como el trigger buscan la fila por `name = 'Otros'`. No hardcodear UUIDs de categoría.
+- **Trigger de resguardo** — `packages_set_default_category` (`BEFORE INSERT ON packages`) ejecuta `set_default_package_category()`: si el `category_id` entrante es `NULL`, lo completa con “Otros”. Solo aplica a INSERT; un UPDATE que deje `category_id` en `NULL` falla por el `NOT NULL` de la columna.
+- **RLS** — la tabla tiene RLS habilitado con una policy de `SELECT` permisiva para `authenticated` (catálogo de lectura). No hay policies de escritura: alta o edición de categorías se hace con service role / migración.
 
 #### Relación con Variantes:
 - Un paquete puede tener múltiples variantes (relación N:M a través de `packages_variants`)
@@ -405,7 +432,7 @@ Cálculo:
 |-------|--------|---------|--------|----------|-------|
 | **Canal** | ✅ (currency_id) | ❌ | ❌ | ❌ | País, API Key, Configuración general |
 | **Producto** | ❌ (hereda) | ✅ (pricing JSONB) | ❌ | ❌ | Código, Features, Lifecycle, Overrides |
-| **Paquete** | ❌ (hereda) | ❌ | ✅ (pricing_rules JSONB) | ❌ | Nombre, Descripción |
+| **Paquete** | ❌ (hereda) | ❌ | ✅ (pricing_rules JSONB) | ❌ | Nombre, Descripción, Categoría de servicio (`category_id`) |
 | **Variante** | ❌ (hereda) | ✅ (gross_price, taxes, markup) | ✅ (pricing_rules JSONB) | ✅ (subject_schema, claim_schema) | Límites, Deducible, Condiciones, Exclusiones |
 | **Cobertura** | ❌ (hereda) | ❌ | ❌ | ❌ | Nombre, Tipo, Número de aseguradora |
 
@@ -435,9 +462,57 @@ La jerarquía anterior describe **qué puedes vender**. En la operación diaria,
 
 ---
 
+## Overlay corporativo (portal de beneficios)
+
+El portal corporativo de beneficios **no duplica el catálogo**: se apoya en la jerarquía anterior y añade encima un conjunto de tablas `corporate_*`, todas aisladas por `channel_id`. Las coberturas (“qué cubre”) se siguen leyendo del núcleo (`coverages`); el overlay solo aporta cómo se comercializa y cómo se lleva el saldo prepago.
+
+### Tablas
+
+| Tabla | Qué guarda | Claves |
+|---|---|---|
+| `corporate_companies` | Configuración de la empresa: `name`, `city`, `logo_initials`, `brand_color`, `logo_url`, `annual_budget numeric(14,2)` y `settings jsonb` | `channel_id` **UNIQUE** → relación 1:1 con el canal |
+| `corporate_products` | Overlay comercial del paquete: `billing_model` (`day_pass` / `subscription` / `one_off`), `price numeric(12,2)`, `price_unit` (`day` / `month` / `once`), `duration_days` (solo `one_off`), `display jsonb`, `is_active`, y los uids de IH `policy_uid` / `package_uid` | UNIQUE `(channel_id, package_id)` |
+| `corporate_wallets` | Saldo prepago cacheado: `fund_balance numeric(14,2)` y `days_balance int` | UNIQUE `(channel_id, package_id)`; con `package_id` nulo representa el **fondo global del canal** (índice único parcial: uno solo por canal) |
+| `corporate_wallet_movements` | Ledger append-only del saldo | FKs a `corporate_wallets` y `channels`; índices por `wallet_id` y `channel_id` |
+
+La moneda **no se guarda en estas tablas**: se resuelve por el canal (`channels.currency_id`), igual que en el resto de la jerarquía.
+
+Solo los productos prepago tienen wallet. Suscripción y pago único no generan fila en `corporate_wallets`.
+
+### Ledger de movimientos
+
+`corporate_wallet_movements` es la fuente auditable del saldo; los balances de `corporate_wallets` son una **caché de lectura rápida** que se actualiza en la misma transacción que el movimiento.
+
+| Campo | Significado |
+|---|---|
+| `instrument` | `fund` (dinero) o `days` (bolsa de días) |
+| `amount` | Con signo: `+` recarga o compra, `−` consumo o expiración |
+| `billed_amount` | Lo que se factura; solo en compras (consumo y expiración van `NULL`) |
+| `balance_after` | Saldo del instrumento inmediatamente después de aplicar el movimiento (permite reconstruir el histórico) |
+| `expires_at` | Solo créditos con vigencia; consumos `NULL` |
+| `movement_type` | `purchase`, `recharge`, `consumption`, `expiration`, `adjustment` |
+| `reference_type` / `reference_id` | Origen del movimiento: `activation` o `risk_item` |
+| `created_by` | Admin que lo ejecutó; nulo en expiraciones automáticas |
+
+La tabla es **append-only por diseño**: no tiene `updated_at` y no se borra ni se edita.
+
+### RLS
+
+Las cuatro tablas tienen RLS habilitado y siguen el mismo patrón que el resto de tablas de negocio:
+
+- `SELECT` acotado a los canales del usuario autenticado (vía `admins_by_channels`; historias posteriores del portal ampliaron esa resolución a los usuarios propios del portal).
+- Policy `for all` para `SUPER_ADMIN`.
+- El ledger recibe solo `SELECT` e `INSERT`. RLS deniega por defecto lo que no está cubierto, así que la ausencia de policies de `UPDATE` / `DELETE` es lo que materializa el append-only para roles `authenticated`.
+
+Contexto general de multi-tenancy y policies: [Autenticación y Autorización](./autenticacion-autorizacion.md).
+
+---
+
 ## Referencias en el Código
 
 - **Migración de Base de Datos**: `apps/next/supabase/migrations/20250204211512_remote_schema.sql`
+- **Categorías de servicio**: `apps/next/supabase/migrations/20260721130000_service_categories_and_package_category.sql`
+- **Tablas del overlay corporativo**: `apps/next/supabase/migrations/20260721130100_create_corporate_portal_tables.sql`
 - **Validaciones**: `apps/next/src/validations/`
 - **Routers TRPC**: `apps/next/src/trpc/`
 - **Utilidades de Paquetes**: `apps/next/src/utils/package.utils.ts`
