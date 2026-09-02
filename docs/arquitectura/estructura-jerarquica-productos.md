@@ -397,6 +397,30 @@ Cálculo:
   6. Precio neto = 3000 - 400 = 2600 USD
 ```
 
+### Precio de capacidad: compra de paquetes de días
+
+El cálculo anterior es el precio de **venta**: se evalúa con el sujeto asegurado en el momento de emitir. Sobre los mismos `gross_price` existe un segundo cálculo, el **precio de capacidad**, que se usa cuando una empresa **compra un paquete de días** por adelantado en el portal de beneficios corporativos (todavía no hay asegurado ni cobertura, solo capacidad reservada).
+
+| | Precio de venta / emisión | Precio de capacidad |
+|---|---|---|
+| **Cuándo** | Alta de una póliza / risk item | Compra de un paquete de días |
+| **Entrada** | Variantes del paquete + `insured_subject` | Solo las variantes del paquete (**sin** sujeto) |
+| **Fórmula** | Σ `gross_price` evaluados contra el sujeto | Σ `gross_price` evaluados con scope vacío |
+| **Variante cuyo `gross_price` depende de un campo del sujeto** | El precio **no es calculable**: la venta queda bloqueada hasta completar el dato | Aporta **0** y el cálculo continúa |
+| **Variante mal configurada (expresión inválida)** | El precio no es calculable | Aporta **0**; **no** aborta la compra |
+
+La tolerancia del precio de capacidad es deliberada: una variante cuyo precio depende del asegurado —o una mal configurada— no puede impedir que el canal compre días. Un paquete cuyas variantes son todas `"0"` o todas dependientes del sujeto da precio **0**, que es un precio válido y no un error.
+
+#### El precio se congela en la compra
+
+El importe se calcula **una sola vez, en el momento de la compra** (`días × Σ variantes`) y se persiste en el movimiento de wallet; **no** se vuelve a calcular en lectura. La RPC `buy_product_days` recibe ese importe en el parámetro `p_billed_amount` y lo guarda en `corporate_wallet_movements.billed_amount`.
+
+Qué significa eso para la vista de Facturación del portal:
+
+- **`billed_amount` con valor** → es el monto de la partida, tal como quedó el día de la compra, aunque después cambien los precios del catálogo. El precio por día se deriva como `billed_amount / días`.
+- **`billed_amount = 0`** → precio **válido**: la partida entra a totales y se muestra como 0, no como “sin monto”.
+- **`billed_amount = null`** → la partida **no tiene precio persistido** y se muestra sin monto. No hay valorización de respaldo en lectura.
+
 ---
 
 ## Resumen de Configuraciones por Nivel
@@ -442,3 +466,4 @@ La jerarquía anterior describe **qué puedes vender**. En la operación diaria,
 - **Routers TRPC**: `apps/next/src/trpc/`
 - **Utilidades de Paquetes**: `apps/next/src/utils/package.utils.ts`
 - **Cálculo de Precios**: `apps/next/src/utils/processPayment.utils.ts`
+- **Precio de venta y precio de capacidad** (portal de beneficios corporativos): `apps/corporate-benefits-portal/src/data/services/pricing/catalog-price.ts`
