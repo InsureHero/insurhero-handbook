@@ -87,6 +87,39 @@ Además de los correos operativos (reporte diario por skill), el sistema envía 
 - Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
 - El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
 
+## Módulo de comunicaciones (`modules/communications`)
+
+Los envíos del **motor de flows** no hablan con Resend directamente: pasan por un módulo server-only, `src/modules/communications/`, cuya función `sendChannelEmail(supabase, input)` es el **único camino de envío** para workflows (y el punto de migración previsto para el resto de los senders del repo).
+
+Qué resuelve el módulo:
+
+| Pieza | Comportamiento |
+|-------|----------------|
+| **Remitente** | Se resuelve por canal: `channels.email` → `WORKFLOW_EMAIL_FROM` → default de plataforma. Si la dirección no trae display name, se envía como `Insure Hero <…>`. |
+| **Destinatarios y adjuntos** | `to[]`, `cc[]`, `bcc[]`, `reply_to`, adjuntos en base64. |
+| **Envío** | HTTP directo a la API de Resend con header **`Idempotency-Key`** (el SDK no lo expone) y **tags** de correlación (`channel_id`, `flow_id`, `node_id`, `source`). Clave de API: `RESEND_API_KEY`, con fallback al nombre anterior. |
+| **Registro e idempotencia** | Inserta en `communication_logs` con estado `queued` **antes** de enviar, con `idempotency_key` única. Si la clave ya existe (redelivery del drain, doble claim) **no inserta y no reenvía**: el envío queda `skipped`. Tras el envío, el log pasa a `sent` + `provider_message_id`, o a `failed` + error. |
+| **Medio** | Hoy solo `email`; la interfaz ya contempla el campo `medium` para otros canales. |
+
+### Tabla `communication_logs`
+
+Un registro por comunicación saliente, **scopeada al canal**:
+
+- Datos del envío: `medium`, `source`, `flow_id`, `node_id`, `template_id`, `from_address`, `recipients[]`, `cc[]`, `bcc[]`, `reply_to`, `subject`, `metadata`.
+- Trazabilidad del proveedor: `provider` (`resend`), `provider_message_id`, `idempotency_key` (**unique**), `error`.
+- Estado: `queued` → `sent` → `delivered` / `delivery_delayed` / `bounced` / `complained` / `failed` / `suppressed`, más `opened_at` y `clicked_at`.
+- **RLS espejo de `flow_runs`**: `select` para los admins del canal y acceso total a `SUPER_ADMIN`; las escrituras son solo del service role (el módulo y el webhook).
+
+El **test run** del builder no escribe en esta tabla: redirige el correo al tester con un banner y no ensucia la auditoría con pruebas de un draft.
+
+### Webhook de entrega: `POST /api/communications/resend`
+
+Resend notifica el ciclo de vida del correo y la ruta actualiza el log correspondiente:
+
+1. Verifica la **firma Svix** con `RESEND_WEBHOOK_SECRET`; si no valida, responde `401` y no toca datos.
+2. Busca el log por `provider_message_id` y aplica el evento: `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.bounced`, `email.complained`, `email.failed` y `email.suppressed` mueven `status`; `email.opened` y `email.clicked` sellan `opened_at` / `clicked_at`.
+3. Es idempotente y tolerante: un evento de un correo que no está en la tabla (enviado por otro camino) se responde `200` como no-op, para que Resend no reintente.
+
 ## Notificaciones en la app Next (Discord)
 
 Fuera de Supabase, fallos reintentables o abandonados en el flujo de **emisiones de integración** pueden notificarse a **Discord** vía webhook:
@@ -107,7 +140,10 @@ Esto complementa el correo diario por skill: Discord es tiempo casi real en erro
 | `notification.integration.error` | Skill que activa el reporte diario de errores de emisión |
 | `daily-emission-dispatcher` | Genera y envía el correo (y adjunto) |
 | pg_cron + pg_net | Disparo programado desde la base |
-| Resend | Proveedor de envío de email desde la Edge Function |
+| Resend | Proveedor de envío de email (Edge Function y módulo de comunicaciones) |
+| `modules/communications` | Camino único de envío del motor de flows: remitente por canal, adjuntos, log e idempotencia |
+| `communication_logs` | Registro por canal de cada comunicación saliente y su estado de entrega |
+| `POST /api/communications/resend` | Webhook firmado de Resend que avanza el estado del log |
 
 ## Referencias cruzadas
 

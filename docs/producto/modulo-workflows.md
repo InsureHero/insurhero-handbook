@@ -9,13 +9,15 @@ Los **skills** entran en esta historia, pero con un matiz importante: en InsureH
 - **Automatizar con el builder de flujos (“Flows”)** — Crear flujos *trigger-first* sin código: “cuando pase X (un evento del sistema, como una orden creada, o un cron) → hacé Y”. Cada flujo referencia **conexiones y templates del canal** (nunca secretos embebidos) y se versiona con **borrador / publicado**, así se puede editar en caliente sin cambiar lo que corre en producción hasta apretar *Publish*.
 - **Definir y recorrer el ciclo del reclamo** — Estados claros (recibido, en revisión, pendiente de documentos, resuelto, cerrado, etc., según cómo tu canal lo modele), con trazabilidad de quién movió el expediente y cuándo.
 - **Operar desde el dashboard y desde integraciones** — Mismas reglas de negocio expuestas vía **Shield** para partners o automatizaciones, sin bifurcar la verdad en hojas paralelas.
-- **Disparar comunicación en puntos del flujo** — Cuando el diseño lo permite, el sistema puede enviar **correos**, registrar **eventos** o llamar **webhooks del cliente** para que un CRM u otra herramienta reaccione al cambio de estado.
+- **Disparar comunicación en puntos del flujo** — Cuando el diseño lo permite, el sistema puede enviar **correos**, registrar **eventos** o llamar **webhooks del cliente** para que un CRM u otra herramienta reaccione al cambio de estado. El correo del builder admite varios destinatarios, copia y copia oculta, plantilla del canal y **adjuntar el archivo generado** por un paso anterior; cada envío queda **registrado con su estado de entrega** (enviado, entregado, rebotado…) y no se duplica si el mismo evento se reprocesa.
+- **Crear coberturas desde un flujo** — Un flujo puede **generar el risk item con su orden** (por ejemplo, a partir de una orden de un partner con un SKU del catálogo) usando el mismo camino que la API pública: mismo pricing de catálogo, mismas validaciones contra la póliza. Se identifica por un `uid` de negocio, así que reprocesar el mismo evento no crea pólizas ni cobros duplicados.
 - **Combinar con skills de operación** — Quién debe recibir **alertas o reportes periódicos** (p. ej. errores de emisión agregados por correo) se gobierna con **skills** asignados a admins y canales; eso forma parte del “workflow” del **equipo**, no del diagrama de estados del reclamo.
 
 ## Características
 
 - **Separación entre “qué pasó en el siniestro” y “a quién le avisamos”** — El historial del reclamo permanece en dominio de claims; la suscripción a informes operativos usa el modelo de **skills** y Edge Functions donde corresponda.
 - **Extensibilidad por canal** — Distintos ramos o socios pueden necesitar más pasos o más pruebas; la plataforma mantiene **permisos** y **APIs** alineados para no romper integraciones al evolucionar reglas.
+- **Errores de configuración antes de publicar** — Al apretar *Publish*, la plataforma revisa cada paso y señala lo que falta (un correo sin destinatario, una llamada sin URL, una creación de cobertura sin identificador) en el propio nodo, en lugar de dejar que el flujo falle en silencio cuando ya está corriendo.
 - **Visibilidad para producto y TI** — Las rutas técnicas (`/api/workflows`, webhooks, Shield `.../workflow`) están resumidas en la documentación de arquitectura para que negocio y desarrollo compartan el mismo mapa.
 
 ## Dónde profundizar

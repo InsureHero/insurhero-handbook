@@ -115,6 +115,20 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 |--------|----------------|
 | `riskItems` | Ciclo de vida del risk item en el dashboard |
 | `policies`, `orders`, `subscriptions` | Pólizas, órdenes, suscripciones |
+| `portfolio` | Serie mensual del tablero de cartera (tarjetas + gráfico de la pantalla de inicio) |
+
+### Métricas de órdenes y risk items: criterio *booking*
+
+Los procedimientos que alimentan tableros comparten un único criterio contable, para que el gráfico, las stat boxes y el tablero de cartera no cuenten cosas distintas:
+
+- **Órdenes → *booking***: cada orden imputa su **importe íntegro, una sola vez**, al mes de `orders.created_at`. Aplica a `portfolio.dashboard`, a `orders.selectForGraphOptimized` y a `orders.billing`. No se reparte el importe entre los meses de cobertura del risk item.
+- **Risk items**: se cuentan por canal, por `created_at` y con `deleted_at IS NULL` (`riskItems.selectForGraphOptimized`).
+- **Agregación en servidor**: PostgREST corta en `max_rows = 1000` **sin avisar**. Los procedimientos de órdenes recorren la ventana **paginando** y acumulan por mes en el servidor, así que un canal con más de mil órdenes en el año ya no pierde filas en silencio; los de risk items cuentan con un `count` por mes, sin traer filas.
+- **`portfolio.dashboard`** devuelve los 12 meses del año en una sola llamada y es **por canal**: si no resuelve un `channel_id` lanza `BAD_REQUEST` en lugar de agregar todos los canales. Las columnas financieras viajan solo si el usuario tiene el privilegio correspondiente; sin él el valor llega en `null` y la UI muestra `—`, no `0`.
+- **`orders.kpis`** acepta `start_date` / `end_date` opcionales: cuando llegan, definen la ventana (es lo que hace que la franja de KPIs siga el filtro de fechas de la pantalla de órdenes); sin ellos se usa el preset `period`. Ojo: solo *Confirmadas* y *Fallidas* son de periodo — *Vencidas* y *Próximas 30d* se calculan **a hoy**, porque `payment_status` y `status` son estado actual y la base no guarda el histórico con el que reconstruirlos.
+- **Margen del canal: dos generaciones del modelo de precios.** Según la orden, el margen está en las columnas planas (`orders.channel_gross_price`) **o** dentro del JSONB `orders.pricing.total.markups_details[]` con `owner = 'channel'` — y ese array tiene a su vez dos formas observadas (`{owner, gross_price}` y `{owner, details:[{name, amount}]}`). La lectura es **tolerante** y con precedencia fija: si la columna plana trae un número se usa esa (incluso si es `0`); solo se cae al JSONB cuando es nula o no numérica. Leer únicamente la columna plana subreporta el margen en órdenes atípicas por órdenes de magnitud, sin ningún error visible.
+
+Los importes se expresan en la **moneda nativa del canal**, sin conversión.
 
 ### Integraciones
 

@@ -206,16 +206,23 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
 - **Nombre (name)**:
   - Nombre de la variante
 
-- **Precio Bruto (gross_price)**:
-  - Precio base de la variante
+- **Precio Neto (net_price)**:
+  - **Es el campo que se configura**: lo que efectivamente recibe la aseguradora, sin impuestos
   - Puede ser una **expresión matemática** que se evalúa dinámicamente
   - Ejemplo: `"100 + (age * 2)"` donde `age` viene del `subject_schema`
+  - Es la **base imponible**: los impuestos se calculan sobre el neto y el bruto se deriva sumándolos
+
+- **Precio Bruto (gross_price)**:
+  - **Derivado**, no editable: `bruto = neto * (1 + suma(rates)) + suma(values)`
+  - Se sigue persistiendo (es contrato público de la Shield API) y la pantalla lo mantiene al día con el neto, en una caja de solo lectura
+  - Las variantes **anteriores** a la migración a neto tienen `net_price` en `NULL` y conservan el comportamiento previo: el bruto es el dato configurado y los impuestos se calculan sobre él. Ese fallback es lo que garantiza que nada de lo ya emitido se mueva
 
 - **Impuestos (taxes - JSONB)**:
   - Array de impuestos aplicables
   - Cada impuesto puede ser:
-    - **Tipo rate**: Porcentaje sobre el precio bruto
+    - **Tipo rate**: Porcentaje **sobre la base imponible** (el neto, o el bruto en variantes sin `net_price`)
     - **Tipo value**: Valor fijo
+  - Las tasas se guardan como **fracción** (`0.21` para 21%); en la pantalla se escriben en base 100 (`15`, no `0.15`). Una tasa fuera de `(0, 1]` es dato mal cargado: el motor **la ignora** en lugar de aplicar un impuesto del 1600%
   - Ejemplo:
     ```json
     [
@@ -244,7 +251,8 @@ La **Variante** es el nivel donde se define el precio específico y las condicio
   - Margen de ganancia adicional
   - Puede contener múltiples niveles de markup
   - Cada entrada tiene un `owner` (`channel` / `platform` / `insurer` / `broker`) que identifica al actor que cobra el margen. En el pricing de la orden los markups se agregan **por owner** (`markups_details`) y se mantienen separados de los impuestos legales (`taxes_details`).
-  - Cada entrada puede ser un **monto fijo** o una **tasa** (`is_rate: true`, porcentaje sobre el `gross_price` de la variante).
+  - Cada entrada puede ser un **monto fijo** o una **tasa** (`is_rate: true`). En modo tasa el porcentaje se aplica sobre el **precio neto** de la variante; un monto fijo se usa tal cual (ni la UI ni el motor lo escalan).
+  - Los impuestos **del propio markup** se **extraen** del monto, no se suman encima: una participación de `12.10` con IVA 21% deja 10 netos.
   - Ejemplo:
     ```json
     [
@@ -298,7 +306,8 @@ CREATE TABLE "variants" (
     channel_id uuid NOT NULL,
     coverage_id uuid NOT NULL,      -- Relación con cobertura
     name text NOT NULL,
-    gross_price text NOT NULL,       -- Expresión matemática
+    net_price text,                  -- Precio neto configurado (base imponible)
+    gross_price text NOT NULL,       -- Bruto derivado del neto (expresión o número)
     taxes jsonb NOT NULL,            -- Array de impuestos
     pricing_rules jsonb,             -- Reglas de precios
     pricing_type text,               -- Tipo de precio
@@ -314,11 +323,17 @@ CREATE TABLE "variants" (
 ```
 
 #### Cálculo de Precios:
-El precio final se calcula:
-1. Se evalúa `gross_price` usando los valores del `subject_schema`
-2. Se aplican los impuestos (`taxes`)
-3. Se aplica el markup (`markup`)
-4. El precio neto = precio bruto - impuestos
+Con `net_price` configurado (variante migrada):
+
+1. Se evalúa `net_price` usando los valores del `subject_schema` → **base imponible**
+2. Se calculan los impuestos (`taxes`) sobre esa base y se **suman**: `bruto = neto + impuestos`
+3. Se aplica el markup (`markup`), con su tasa sobre el neto si es de tipo tasa
+
+Sin `net_price` (variante anterior al cambio): se evalúa `gross_price`, los impuestos se calculan sobre el bruto y el neto se reporta como `bruto - impuestos`.
+
+La diferencia no es cosmética: con el criterio viejo el neto informado **no reconstruía** el bruto cobrado (`2900 - 174 = 2726`, y `2726 * 1.06 = 2889.56`). Con el criterio por neto el total cierra en los dos sentidos.
+
+La rama por neto trabaja con **4 decimales**; el importe que se cobra sale del precio de catálogo, que redondea a 2 (decimales de dinero). El residuo vive solo en el desglose interno.
 
 ---
 
@@ -372,9 +387,9 @@ CREATE TABLE "coverages" (
 2. **Reglas de Precio**: 
    - Se pueden definir en **Paquete** y **Variante**
    - Las reglas de **Variante** tienen precedencia sobre las de **Paquete**
-3. **Precio Base**: Se define en **Variante** (`gross_price`)
-4. **Impuestos**: Se aplican en **Variante** sobre el precio bruto
-5. **Markup**: Se aplica en **Variante** después de impuestos
+3. **Precio Base**: Se define en **Variante** (`net_price`; `gross_price` en variantes sin neto)
+4. **Impuestos**: Se aplican en **Variante** sobre la base imponible (el neto)
+5. **Markup**: Se aplica en **Variante**; en modo tasa, sobre el neto
 
 ### Ejemplo de Cálculo de Precio Final
 
@@ -382,20 +397,21 @@ CREATE TABLE "coverages" (
 Canal: Moneda = USD
 
 Variante:
-  - gross_price = "1000 + (age * 50)"
+  - net_price = "1000 + (age * 50)"
   - taxes = [{"rate": "0.16", "type": "rate"}]
   - markup = [{"gross_price": "100"}]
 
 Sujeto asegurado: age = 30
 
 Cálculo:
-  1. Precio base = 1000 + (30 * 50) = 2500 USD
+  1. Precio neto = 1000 + (30 * 50) = 2500 USD   ← base imponible
   2. Impuesto (16%) = 2500 * 0.16 = 400 USD
-  3. Precio con impuesto = 2500 + 400 = 2900 USD
+  3. Precio bruto de la variante = 2500 + 400 = 2900 USD
   4. Markup = 100 USD
   5. Precio final bruto = 2900 + 100 = 3000 USD
-  6. Precio neto = 3000 - 400 = 2600 USD
 ```
+
+Verificación: el neto reconstruye el bruto (`2500 * 1.16 = 2900`), que es lo que el criterio anterior no cumplía.
 
 ---
 
@@ -406,7 +422,7 @@ Cálculo:
 | **Canal** | ✅ (currency_id) | ❌ | ❌ | ❌ | País, API Key, Configuración general |
 | **Producto** | ❌ (hereda) | ✅ (pricing JSONB) | ❌ | ❌ | Código, Features, Lifecycle, Overrides |
 | **Paquete** | ❌ (hereda) | ❌ | ✅ (pricing_rules JSONB) | ❌ | Nombre, Descripción |
-| **Variante** | ❌ (hereda) | ✅ (gross_price, taxes, markup) | ✅ (pricing_rules JSONB) | ✅ (subject_schema, claim_schema) | Límites, Deducible, Condiciones, Exclusiones |
+| **Variante** | ❌ (hereda) | ✅ (net_price editable, gross_price derivado, taxes, markup) | ✅ (pricing_rules JSONB) | ✅ (subject_schema, claim_schema) | Límites, Deducible, Condiciones, Exclusiones |
 | **Cobertura** | ❌ (hereda) | ❌ | ❌ | ❌ | Nombre, Tipo, Número de aseguradora |
 
 ---
@@ -415,7 +431,7 @@ Cálculo:
 
 1. **Moneda**: Una vez establecida en el Canal, **no puede modificarse**. Esto asegura consistencia en todas las transacciones.
 
-2. **Expresiones Matemáticas**: El `gross_price` en Variantes puede usar expresiones que se evalúan dinámicamente usando valores del `subject_schema`.
+2. **Expresiones Matemáticas**: El precio de la Variante puede ser una expresión que se evalúa dinámicamente usando valores del `subject_schema`, tanto en el neto configurado como en el bruto derivado (`0.0909*total_reservation_value` y similares siguen soportadas).
 
 3. **Relaciones N:M**: 
    - Productos ↔ Paquetes (a través de `products_packages`)
