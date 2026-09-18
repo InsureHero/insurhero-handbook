@@ -37,6 +37,22 @@ Listado **orientado a desarrollo**, agrupado por **dominio**. Las rutas reales i
 | `.../claims/[id]/events` | `v1`, `integrations/v1` |
 | `.../claims/[id]/assets` | `v1`, `ia/v1`, `ia/v2`, `integrations/v2`, `v2` |
 
+### Handlers compartidos (`_shared/claims`)
+
+Varias de estas rutas eran copias literales entre namespaces. Hoy el cuerpo vive una sola vez en **`app/api/shield/_shared/claims/`** y cada `route.ts` es un envoltorio fino (`export async function METHOD(request, route) { return handler(request, route.params) }`) que expone los mismos métodos HTTP que antes:
+
+| Módulo compartido | Lo consumen |
+|-------------------|-------------|
+| `claim-workflow.handler.ts` (GET, POST) | `v1`, `v2`, `integrations/v2` |
+| `claim-assets.handler.ts` (POST) | `v1`, `v2`, `integrations/v2` |
+| `claim-detail.handler.ts` (GET, PATCH) | `v2`, `integrations/v2` |
+| `ia-claim-assets.handler.ts` (POST) | `ia/v1`, `ia/v2` |
+
+- **El contrato no cambió**: mismos schemas de entrada y salida, mismos status codes, mismos headers. Cada ruta sigue trazando por separado en Sentry, porque el tag se arma con el `pathname` de la request y no con el módulo.
+- El chequeo de **`x-ai-api-key`** del grupo `ia` vive **dentro** de `ia-claim-assets.handler.ts`, no en el envoltorio: es la única diferencia real entre ese handler y el de canal.
+- La carpeta lleva prefijo `_` para que el App Router no la tome como segmento: **no existe ninguna ruta bajo `/api/shield/_shared/*`**.
+- Los near-duplicados `v1` vs `ia/v1` de otros recursos (y las variantes `ia` de workflow y detalle de reclamo) **no** están unificados: divergen lo suficiente para tratarse aparte.
+
 ## Pólizas y catálogo
 
 | Recurso (patrón) | Presente en |

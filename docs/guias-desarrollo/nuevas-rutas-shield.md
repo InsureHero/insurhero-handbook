@@ -38,21 +38,58 @@ Al añadir un recurso, **sigue la estructura de carpetas** de recursos similares
 6. **Tests** si el repositorio los tiene para `app/api` (o al menos pruebas manuales documentadas en el PR).
 7. **Documentación**: actualizar el [Inventario de rutas](../api-reference/shield/inventario-de-rutas.md) o abrir issue con la lista de paths nuevos para que el handbook quede alineado.
 
-## 4. Cambios que rompen contrato
+## 4. Reutilizar un handler entre namespaces
+
+Cuando el mismo recurso existe en varios namespaces (`v1`, `v2`, `integrations/v2`, …) con el **mismo cuerpo**, no se copia el archivo: el handler vive una vez en una carpeta con prefijo `_` y los `route.ts` quedan como envoltorios.
+
+```ts
+// app/api/shield/_shared/claims/claim-assets.handler.ts
+export async function claimAssetsPostHandler(
+  request: NextRequest,
+  params: ClaimParams
+): Promise<Response> {
+  return api(request, body, params).handle(async inputs => {
+    /* … */
+  });
+}
+```
+
+```ts
+// app/api/shield/v1/claims/[claimId]/assets/route.ts
+export async function POST(
+  request: NextRequest,
+  route: { params: ClaimParams }
+) {
+  return claimAssetsPostHandler(request, route.params);
+}
+```
+
+Reglas de la convención:
+
+- **Carpeta con `_`** (`_shared/`, `_utils/`): el App Router excluye del routing los segmentos que empiezan con `_`, así que el handler no queda expuesto como ruta.
+- **El envoltorio no hace lógica**: solo importa, delega y exporta los mismos métodos HTTP que antes. Pasa el `NextRequest` intacto, porque hay handlers que leen `request.json()` o `request.formData()` por su cuenta antes de llamar a `api(...)`.
+- **`params` viaja como argumento** y se sigue pasando a `api(request, body, params)`, de modo que las validaciones zod ven lo mismo.
+- **Las diferencias de auth van dentro del handler**, no en el envoltorio (p. ej. el chequeo de `x-ai-api-key` del grupo `ia`).
+- Precedentes en el repo: `app/api/shield/_shared/claims/` (reclamos) y `app/api/postsales/v1/_utils`.
+
+Ejemplo aplicado y qué rutas consumen cada módulo: sección *Handlers compartidos* del [Inventario de rutas](../api-reference/shield/inventario-de-rutas.md).
+
+## 5. Cambios que rompen contrato
 
 - **Campos nuevos opcionales** en respuestas: suelen ser compatibles hacia atrás.
 - **Quitar campos, renombrar o cambiar tipos** en rutas ya publicadas: tratar como **breaking**.
 - Estrategias: nueva ruta bajo **`v2`**, subruta nueva, o nuevo recurso; evitar “cambiar el comportamiento” de `v1` sin aviso.
 
-## 5. Relación con tRPC
+## 6. Relación con tRPC
 
 El **dashboard interno** consume **tRPC** (`/api/trpc`), no Shield. Si la funcionalidad es **solo interna**, valora un procedimiento tRPC en lugar de ampliar Shield, para no ensanchar la superficie pública.
 
-## 6. Referencias en código (recordatorio)
+## 7. Referencias en código (recordatorio)
 
 | Artefacto | Ruta típica |
 |-----------|-------------|
 | Rutas Shield | `src/app/api/shield/**/route.ts` |
+| Handlers compartidos entre namespaces | `src/app/api/shield/_shared/**` |
 | Middleware | `src/app/middlewares/shieldAuth.middleware.ts` |
 
 ## Ver también

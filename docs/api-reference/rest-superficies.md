@@ -26,6 +26,7 @@ Mapa **orientado a desarrollo** de las rutas HTTP relevantes bajo `apps/next/src
 | `/api/processPayment` | Procesamiento de pagos (órdenes, suscripciones). |
 | `/api/workflows` | Evaluación de workflows, ejecución de webhooks de comunicación. Ver [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md). |
 | `/api/executeClientWebhooks` | Entrega hacia webhooks de clientes. |
+| `/api/communications/resend` | **Webhook entrante de Resend** (firma Svix): avanza el estado de entrega en `communication_logs`. Ver [Notificaciones, skills y Supabase Edge](../arquitectura/notificaciones-skills-supabase.md). |
 | `/api/mails/v1` | Envíos relacionados con reclamos u otros eventos. |
 | `/api/addons/v1` | Generación de PDF u otros add-ons. |
 | `/api/features/gen-pdf` | Generación de PDF vía features. |

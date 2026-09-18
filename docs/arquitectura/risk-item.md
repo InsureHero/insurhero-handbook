@@ -15,6 +15,7 @@ A alto nivel, un risk item combina:
 - **Contexto de canal** — Misma moneda, país y políticas que definiste al crear el canal. El campo **`timezone`** (IANA) del canal importa para reportes y skills que usan ventanas en hora local; ver [Notificaciones, skills y Supabase Edge](./notificaciones-skills-supabase.md).
 - **Selección comercial** — Paquete y variantes que aplican a ese contrato en curso, alineadas con `sales_integration_slug` / `post_sales_integration_slug` cuando hay emisión hacia Phoenix, AMA u otro proveedor.
 - **Personas** — Titular (beneficiario titular), **beneficiarios**, **authorized_claimants** (quién puede reclamar o actuar en postventa según reglas).
+- **Tipo de cobro** — **No** se guarda en el risk item: la fuente de verdad es el paquete (`packages.pricing_rules.pricing_type`, valores `one_time` / `recurring`). Las pantallas que lo muestran lo leen de ahí y, cuando el paquete no lo tiene configurado, muestran `—` en lugar de asumir un tipo. Duplicarlo en `risk_items.metadata` está descartado a propósito: dos lugares para el mismo dato es lo que hace que se separen.
 - **Integración** — Tras el dispatch u operaciones de postventa, suele reflejarse estado en **`risk_items.metadata.integration`** (por ejemplo identificadores externos, errores, reintentos), coherente con la tabla **`integration_emissions`**.
 - **Identidad estable** — Un **`uid`** u otras referencias útiles para trazas entre sistemas (logs, adaptadores, soporte).
 
@@ -27,6 +28,19 @@ Para el contrato exacto que consume el orquestador, el código define **`Standar
 3. **Emisión hacia aseguradora** — El **dispatch** (`POST /api/integrations/dispatch`) construye un `StandardRiskItem` y llama al **orquestador**; el resultado vuelve al historial de emisiones y a la metadata del risk item.
 4. **Postventa del titular** — OTP, JWT y rutas **`/api/postsales/v1/...`** operan sobre risk items donde el email es titular; la RPC **`postsales_risk_item_ids_by_holder_email`** acota elegibilidad.
 5. **Reclamos** — Los siniestros se anclan al contexto del contrato; las rutas Shield de **`.../claims`** y **`.../claims/[id]/workflow`** conviven con el mismo modelo de dominio.
+
+### Crear un risk item: un solo camino completo
+
+Crear un risk item “bien” es más que un insert: hay que resolver `package_uid` y `policy_uid` a ids **scopeados al canal**, verificar que el paquete exista dentro del **snapshot inmutable** de la póliza (`policies.product`), validar el `insured_subject` contra el subject-schema de esa póliza, resolver el precio **del catálogo** (y pisar el que venga del cliente, dejando traza si difiere), insertar como `ACTIVE` con el `end_date` por defecto del canal y su historial de estados, y crear la orden —con **rollback** del risk item si la orden falla—.
+
+Todo eso vive en un **servicio compartido** (`src/modules/riskItems/createRiskItem.ts`). Los dos consumidores llaman al mismo código:
+
+| Consumidor | Rol |
+|------------|-----|
+| `POST /api/shield/v1/risk-items` | Envoltorio fino que mapea el resultado del servicio a `ShieldResponse`. El comportamiento observable de la API pública no cambió. |
+| Nodo `create_risk_item` del builder de flows | Arma el body desde su configuración (interpolable) y delega en el servicio; añade idempotencia por `uid` y guard anti-bucle. Ver [Workflows, automatización y skills](./workflows-y-skills.md). |
+
+Las vías `ia/v1`, `ia/v2` y tRPC siguen con su propia implementación **incompleta** (se saltean pricing, orden o `end_date` por defecto según el caso): unificarlas es deuda conocida, no estado actual.
 
 **Cancelación según fecha** — La ruta Shield `.../risk-items/[riskItemId]/cancel` interpreta la fecha de baja a **nivel de día (UTC)**: si es **hoy** (o el literal `"cancel"`), el risk item pasa a `CANCELLED` de inmediato, se registra en el historial de estados y se encola la notificación al carrier; si es una **fecha futura**, solo se guarda el `end_date` y el ciclo diario lo cancela cuando llegue; una **fecha pasada** se rechaza (`422`). Cancelar algo ya cancelado es idempotente.
 

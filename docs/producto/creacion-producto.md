@@ -149,7 +149,8 @@ Según el schema de Supabase (`variants` table):
 | `coverage_id` | `uuid` | **Cobertura base** (FK a `coverages`) | ✅ Sí |
 | `name` | `text` | Nombre de la variante | ✅ Sí |
 | `description` | `text` | Descripción detallada | No |
-| `gross_price` | `text` | **Precio base como expresión matemática** | ✅ Sí |
+| `net_price` | `text` | **Precio neto configurado** (base imponible) | No |
+| `gross_price` | `text` | Precio bruto: **derivado** del neto + impuestos | ✅ Sí |
 | `taxes` | `jsonb` | Array de impuestos aplicables | ✅ Sí |
 | `markup` | `jsonb` | Margen de ganancia (array) | ✅ Sí |
 | `coverage_limits` | `numeric` | Límite máximo de cobertura (default: 0) | No |
@@ -170,11 +171,15 @@ Según el schema de Supabase (`variants` table):
 
 ### Campos Clave Explicados
 
-#### 1. `gross_price` (text - expresión matemática)
+#### 1. `net_price` (text) y `gross_price` (text)
 
-Es una **expresión matemática** que se evalúa dinámicamente usando los valores del `subject_schema`. Puede incluir variables como `age`, `vehicle_value`, etc.
+Quien configura una variante conoce su **precio neto**: lo que efectivamente recibe la aseguradora. El bruto es una consecuencia de sumarle los impuestos, no un dato de entrada.
 
-**Ejemplos:**
+- **El campo editable en pantalla es el neto.** Puede ser un número o una **expresión matemática** que se evalúa dinámicamente con los valores del `subject_schema` (`age`, `vehicle_value`, …).
+- **El bruto se muestra en una caja de solo lectura** y se mantiene sincronizado: `bruto = neto * (1 + suma(rates)) + suma(values)`. Se sigue guardando en `gross_price` porque es contrato público de la Shield API.
+- **Las variantes anteriores al cambio** tienen `net_price` vacío y siguen funcionando con el criterio previo (el bruto es el dato configurado). Para esas, la pantalla muestra el bruto guardado tal cual: abrir y guardar **no** lo pisa, y solo pasa a ser derivado cuando alguien escribe un neto.
+
+**Ejemplos de neto:**
 - `"500"` - Precio fijo
 - `"500 + (age * 10)"` - Precio base + $10 por cada año de edad
 - `"1000 + (vehicle_value * 0.02)"` - Precio base + 2% del valor del vehículo
@@ -182,8 +187,10 @@ Es una **expresión matemática** que se evalúa dinámicamente usando los valor
 #### 2. `taxes` (jsonb - array de impuestos)
 
 Array de objetos donde cada impuesto puede ser:
-- **Tipo `rate`**: Porcentaje sobre el precio bruto
+- **Tipo `rate`**: Porcentaje **sobre la base imponible** (el neto)
 - **Tipo `value`**: Valor fijo
+
+Las tasas se **persisten como fracción** (`0.16` = 16%), pero en el formulario se escriben en **base 100** (`16`). Una tasa fuera de `(0, 1]` es dato mal cargado y el motor la **ignora**, en lugar de cobrar un impuesto del 1600%.
 
 **Ejemplo:**
 ```json
@@ -205,7 +212,7 @@ Array de objetos donde cada impuesto puede ser:
 
 Array de objetos que representan márgenes de ganancia adicionales. Cada markup pertenece a un **`owner`** (`channel`, `platform`, `insurer` o `broker`) que identifica al actor que cobra ese margen sobre la prima. En el pricing de la orden los markups se agregan **por owner** y se mantienen separados de los impuestos legales de la variante.
 
-Un markup puede expresarse como **monto fijo** o como **tasa**: si `is_rate` es `true`, el valor se interpreta como un porcentaje sobre el `gross_price` de la variante y el sistema calcula el monto resultante; si es `false` o está ausente, `gross_price` es un monto fijo. Los `taxes` dentro de un markup **no** son impuestos legales, sino los componentes del propio markup.
+Un markup puede expresarse como **monto fijo** o como **tasa**: si `is_rate` es `true`, el valor se interpreta como un porcentaje **sobre el precio neto** de la variante y el sistema calcula el monto resultante; si es `false` o está ausente, `gross_price` es un monto fijo que se usa tal cual (ni la UI ni el motor lo escalan). Los `taxes` dentro de un markup **no** son impuestos legales, sino los componentes del propio markup, y se **extraen** del monto en vez de sumarse encima (una participación de `12.10` con IVA 21% deja 10 netos).
 
 **Ejemplo:**
 ```json
@@ -292,7 +299,8 @@ Define los campos requeridos para presentar un reclamo.
   "coverage_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "name": "Seguro Básico de Auto",
   "description": "Cobertura básica con límite de $50,000",
-  "gross_price": "500 + (vehicle_value * 0.02)",
+  "net_price": "500 + (vehicle_value * 0.02)",
+  "gross_price": "(500 + (vehicle_value * 0.02)) * 1.16",
   "taxes": [
     {
       "name": "IVA",
@@ -337,17 +345,18 @@ Define los campos requeridos para presentar un reclamo.
 
 El sistema calcula el precio así:
 
-1. **Precio Base**: Evalúa `gross_price` usando valores del `subject_schema`
+1. **Precio Neto**: Evalúa `net_price` usando valores del `subject_schema` → es la base imponible
    - Ejemplo: Si `vehicle_value = 20000`, entonces: `500 + (20000 * 0.02) = 900`
 
-2. **Aplicar Impuestos**: Calcula impuestos sobre el precio base
-   - Ejemplo: `900 * 0.16 (IVA) = 144` → Precio con impuestos: `1044`
+2. **Aplicar Impuestos**: Calcula los impuestos **sobre el neto** y los suma
+   - Ejemplo: `900 * 0.16 (IVA) = 144` → Precio bruto de la variante: `1044`
 
-3. **Aplicar Markup**: Suma el markup
+3. **Aplicar Markup**: Suma el markup (en modo tasa, calculado sobre el neto)
    - Ejemplo: `1044 + 50 = 1094`
 
 4. **Precio Final Bruto**: `1094`
-5. **Precio Neto**: `1094 - 144 = 950`
+
+El neto reconstruye el bruto (`900 * 1.16 = 1044`). En variantes sin `net_price` el orden es el anterior: se evalúa `gross_price`, los impuestos se calculan sobre él y el neto se reporta como `bruto - impuestos`.
 
 ---
 
@@ -674,9 +683,11 @@ Precio total calculado como expresión matemática que suma todos los precios de
 3. El cliente completa el **`subject_schema`** con sus datos
 4. El sistema:
    - Toma todas las **variantes** del paquete
-   - Calcula el precio de cada variante usando `gross_price` + `taxes` + `markup`
+   - Calcula el precio de cada variante desde su base imponible (`net_price`, o `gross_price` si no tiene neto) + `taxes` + `markup`
    - Suma todos los precios → `total_gross_price`
 5. Se crea la póliza con todos estos datos como **snapshot**
+
+El desglose de la orden (`orders.pricing`: `total.net_price`, `taxes_details`, `markups_details`) también es un **snapshot inmutable**: las órdenes ya emitidas conservan el suyo y no se recalculan cuando cambia la configuración de la variante.
 
 ---
 

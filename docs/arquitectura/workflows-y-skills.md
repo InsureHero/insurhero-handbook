@@ -50,12 +50,42 @@ El drain se dispara de forma **reactiva**: un trigger sobre `event_outbox` publi
 
 ### Nodos
 
-| Grupo | Nodos |
-|-------|-------|
-| Genéricos | `trigger`, `http`, `condition`, `transform`, `delay`, `log` |
-| Especializados | `carrier_sync`, `sftp` (inbound/outbound), `payment_file`, `source`/`query`, `append_to_batch` |
+Los tipos de nodo viven en un **registry único** (`src/workflows/nodes/`): un módulo por tipo que declara `kind`, categoría (`trigger` / `control` / `action`), etiqueta, descripción, grupo de paleta y su **schema Zod de configuración**. De ese registry **derivan** la paleta del builder, los ejecutores válidos y la validación al publicar: no hay listas paralelas que se puedan desincronizar. Agregar un nodo es crear su módulo, registrarlo, implementar su executor y su formulario.
 
-El nodo `source`/`query` carga registros de nuestro propio modelo (risk items, órdenes, reclamos) por un vocabulario de filtros **acotado y siempre scopeado al canal** (sin SQL libre) — es lo que puebla el contexto cuando el trigger es cron. Un `source` que devuelve N registros se procesa con `foreach`.
+| Nodo (`kind`) | Categoría | Grupo | Qué hace |
+|---------------|-----------|-------|----------|
+| `trigger` | trigger | — | Evento (o cron) que arranca el flow |
+| `condition` | control | Genérico | Bifurca según una condición |
+| `foreach` | control | Genérico | Ejecuta el cuerpo una vez por ítem |
+| `log` | control | Genérico | Deja un mensaje en el trace |
+| `http` | acción | Genérico | Llama un endpoint HTTP externo |
+| `webhook` | acción | Genérico | Hace POST de un payload a una URL |
+| `email` | acción | Genérico | Envía un correo (ver abajo) |
+| `lookup` | acción | Genérico | Traduce un valor con una tabla de mapeo del propio flow |
+| `map` | acción | Genérico | Arma un objeto a partir de otros campos |
+| `source` | acción | Especializado | Carga registros del propio modelo, siempre scopeado al canal |
+| `sftp` | acción | Especializado | Deja un archivo por SFTP |
+| `file_builder` | acción | Especializado | Construye un archivo TXT/CSV/XML |
+| `create_risk_item` | acción | Especializado | Crea un risk item con su orden (ver abajo) |
+
+El nodo `source` carga registros de nuestro propio modelo (risk items, órdenes, reclamos) por un vocabulario de filtros **acotado y siempre scopeado al canal** (sin SQL libre) — es lo que puebla el contexto cuando el trigger es cron. Un `source` que devuelve N registros se procesa con `foreach`. La superficie consultable (entidades, campos y operadores) tiene una sola fuente, compartida por el motor y por el picker del builder.
+
+#### Nodo `email`
+
+Un solo nodo cubre el envío completo: `to` múltiple (separado por coma o punto y coma), `cc`, `bcc`, `reply_to` —todos interpolables—, cuerpo inline o `template_id` de una plantilla del canal, y **adjuntos** vía `attach_from`, un dot-path al archivo generado por un `file_builder` previo (`<nodeId>.file`). Si `attach_from` está configurado y no resuelve, el nodo falla: un certificado que no se adjunta es un bug, no un default. El asunto puede omitirse cuando la plantilla guardada trae su propio `subject`.
+
+El envío no lo hace el nodo: delega en el **módulo de comunicaciones**, que resuelve el remitente por canal, registra cada envío y garantiza que un redelivery del drain no reenvíe el correo. Detalle: [Notificaciones, skills y Supabase Edge](./notificaciones-skills-supabase.md).
+
+#### Nodo `create_risk_item`
+
+El motor no solo reacciona a risk items: también puede crearlos. El nodo arma el body desde su configuración (todo interpolable con `{{...}}`) y llama al **mismo servicio compartido** que usa `POST /api/shield/v1/risk-items`, así que hereda la resolución de `package_uid` / `policy_uid`, la validación contra el snapshot de la póliza y el `insured_subject`, el precio del catálogo y la creación de la orden con rollback. No hay una segunda vía de creación. Ver [Risk item](./risk-item.md).
+
+Dos guardas propias del motor, porque el drain es *at-least-once*:
+
+- **Idempotencia por `uid`** — El `uid` es obligatorio (lo exige el schema al publicar) y funciona como llave de negocio: con `on_conflict: "skip"` (default) un `uid` ya existente en el canal no crea nada y devuelve el existente marcado `skipped`; con `"fail"` el nodo falla, para flujos donde un duplicado es una anomalía que hay que ver.
+- **Guard anti-bucle** — El nodo estampa `metadata.created_by_flow = <flow_id>` en lo que crea. Si la entidad que disparó el flow lleva ese mismo `created_by_flow`, no crea y devuelve `skipped: loop guard`. Corta el ciclo `flow → risk_item.created → mismo flow` en el primer rebote, sin prohibir el caso legítimo de crear un risk item **distinto** en reacción a otro.
+
+En el **test run** del builder el nodo no crea nada: devuelve el body que enviaría, igual que `http`, `webhook` y `sftp`.
 
 ### Conexiones y recursos por canal
 
@@ -63,23 +93,27 @@ Los nodos que hablan con el exterior no llevan secretos en la definición del fl
 
 - **Connections propias del canal** (`channel_connections`): http/webhook/sftp del canal. El secreto se guarda **cifrado at-rest** (AES-256-GCM) y **nunca** se devuelve al cliente; en el picker aparecen como *“Your connections”*.
 - **Adapters globales de InsureHero** (registro `integrations`: Phoenix, AMA/MAPFRE, MAWDY, SFTP), habilitados por canal mediante una **allow-list explícita** (`channel_integrations`). El motor **rechaza** ejecutar un adapter no habilitado para el canal del flow —aunque el slug esté forzado a mano en la definición— y marca el run como fallido (defensa en profundidad).
-- **Templates de email** channel-scoped: el nodo email resuelve el `template_id` **en vivo** desde `email_templates` en cada ejecución (editar el template se refleja sin re-guardar el flow).
+- **Templates de email** channel-scoped: el nodo email resuelve el `template_id` **en vivo** desde `email_templates` en cada ejecución (editar el template se refleja sin re-guardar el flow). La plantilla puede llevar su propio **`subject`**, que el nodo usa cuando no fija uno.
 
 ### Versionado: draft / published
 
 Editar un flow activo es seguro por construcción: el builder edita siempre un **draft** y el runner ejecuta siempre la **versión publicada**. Ambos ejes son ortogonales.
 
 - **Save** escribe solo el draft; el runner sigue con la versión viva.
-- **Publish** valida el DAG (exactamente un trigger, nodos alcanzables desde él, sin ciclos) y, si pasa, crea una fila en `flow_versions` (historial append-only, `version_number` incremental) y activa esa definición.
+- **Publish** valida el DAG (exactamente un trigger, nodos alcanzables desde él, sin ciclos) **y la configuración de cada nodo** contra el schema de su tipo en el registry; también rechaza tipos de nodo desconocidos. Si pasa, crea una fila en `flow_versions` (historial append-only, `version_number` incremental) y activa esa definición.
 - **Activate / Deactivate** arma o desarma el trigger; es **ortogonal** a publish (un flow puede estar activo con *cambios sin publicar*). Activar exige tener una versión publicada. Al activar un flow de evento con **eventos pendientes** en el outbox, la UI avisa del número que se procesará (para no reprocesar historia). En **desarrollo** existe además una acción *Clear backlog & activate* que **descarta** esos pendientes antes de activar; está **bloqueada en producción** (es una ayuda de dev, no una operación de negocio).
 - **Rollback**: carga una versión anterior al draft para revisarla y publicarla como versión nueva (historial lineal).
 - **Review changes / Compare**: diff estructural (nodos y conexiones agregados / quitados / cambiados) antes de publicar o restaurar.
 
 Cada `flow_run` registra la `flow_version` que ejecutó, para poder reconstruir qué definición corrió en cada momento (runs previos al versionado quedan sin versión).
 
+La validación de configuración es lo que evita que un error de armado se descubra recién en runtime: un `email` sin destinatario, un `http` sin URL ni conexión, un `foreach` sin `items` o un `create_risk_item` sin `uid` devuelven `BAD_REQUEST` con un mensaje por nodo (con su etiqueta) que la UI muestra sobre el nodo afectado. Los campos con `{{...}}` son válidos: la validación exige presencia y forma, no resuelve plantillas. Corre **solo en publish**, así que un flow publicado antes de que existiera la regla sigue ejecutándose tal cual; los errores aparecen al próximo publish.
+
 ### Ejecución y observabilidad
 
-El runner **camina el DAG** desde el trigger: `condition` elige la arista de salida, `delay` re-encola. Reintentos best-effort vía QStash. Cada run deja un **trace** (`flow_runs`); los runs `failed` / `partial` se ven en **Failed Messages** (DLQ) con enlace al trace y acción de reintento.
+El runner **camina el DAG** desde el trigger: `condition` elige la arista de salida y `foreach` repite el cuerpo por ítem. Reintentos best-effort vía QStash. Cada run deja un **trace** (`flow_runs`); los runs `failed` / `partial` se ven en **Failed Messages** (DLQ) con enlace al trace y acción de reintento.
+
+Como la entrega del outbox es *at-least-once*, los nodos con efectos externos son **idempotentes por diseño**: el `email` no reenvía un correo ya registrado y `create_risk_item` no duplica un `uid` ya existente. Un reintento del mismo evento deja esos pasos en `skipped`, visible en el trace.
 
 > Referencia de código: `src/workflows/engine/v4/**` (motor), `src/app/api/workflows/v4/**` (drain, cron-trigger), `src/components/flows/**` (builder). Todo bajo el paraguas SCRUM-151.
 
