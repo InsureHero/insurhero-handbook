@@ -137,12 +137,30 @@ Para permitir varias emisiones por risk item según el hecho que las dispara, `i
 
 **`integrationEmissions`**: consulta emisiones por risk item, **`retryEmissions`** y **`syncBeneficiaries`** delegan en lógica de reintento/emisión (`retryFromBackoffice`, `executeEmission`) para **gestionar reintentos** desde el dashboard (coherente con la “pila” del diagrama).
 
+#### Filtro de integraciones del listado de Risk Items
+
+El selector de integraciones de la tabla se resuelve **en la query**: `riskItems.countByFilter` y `riskItems.selectByFilter` reciben el filtro, así que el contador y la paginación cuentan exactamente las filas que se muestran, y los registros que cumplen el criterio aparecen aunque estén en otra página. El criterio mira el **conjunto de emisiones** del risk item; no depende del `sales_integration_slug` del paquete ni del provider de la emisión.
+
+| Opción del selector | Devuelve los risk items… |
+|---------------------|---------------------------|
+| Todas las integraciones | Sin filtro. |
+| All succeeded | Con al menos una emisión y **todas** en `SUCCESS`. |
+| Has errors | Con al menos una emisión en estado **distinto de `SUCCESS`**. |
+| Abandoned | Con al menos una emisión en `ABANDONED`. |
+| Partial | Con al menos una emisión `SUCCESS` y al menos una que no lo es. |
+
+`Abandoned` y `Partial` son subconjuntos de `Has errors`. Los estados `PENDING` y `RETRYING` cuentan como error, igual que los muestra la columna Integrations. Un risk item **sin emisiones** no cumple ninguna de las cuatro opciones: aparece solo bajo *Todas las integraciones*.
+
+El predicado vive en `trpc/riskItems.integrationFilter.helpers.ts` (las dos opciones que hablan de una sola emisión se resuelven con el join `!inner` sobre `integration_emissions`; las dos que hablan del conjunto, cruzando ids). El resto de los filtros de la tabla —fechas, búsqueda, paquete, estado— está en `trpc/riskItems.listFilters.helpers.ts`, punto de entrada único de los dos procedimientos para que el contador no pueda separarse del listado.
+
 ## Estados y reintentos (tabla `integration_emissions`)
 
 | Estado en código | Significado aproximado |
 |------------------|-------------------------|
+| `PENDING` | Valor por defecto al registrar la emisión; todavía sin resultado del adaptador. |
 | `SUCCESS` | Emisión aceptada por el adaptador; se guardan `external_id` y respuesta. |
 | `FAILED` (reintentable) | Error de red/5xx/etc.; `next_retry_at` y posible cola QStash. |
+| `RETRYING` | Reintento en curso o encolado tras un fallo reintentable. |
 | `ABANDONED` | Error no reintentable; se notifica a Discord; sin reintento automático. |
 
 La lógica **`isRetryableError`** en `dispatch/route.ts` define qué errores pueden volver a la cola.

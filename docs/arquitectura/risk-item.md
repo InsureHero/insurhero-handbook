@@ -18,6 +18,8 @@ A alto nivel, un risk item combina:
 - **Integración** — Tras el dispatch u operaciones de postventa, suele reflejarse estado en **`risk_items.metadata.integration`** (por ejemplo identificadores externos, errores, reintentos), coherente con la tabla **`integration_emissions`**.
 - **Identidad estable** — Un **`uid`** u otras referencias útiles para trazas entre sistemas (logs, adaptadores, soporte).
 
+**ExternalId (número para el carrier)** — Además del `uid`, un risk item puede tener un número secuencial propio del canal, guardado en **`carrier_external_ids`** (`entity_type = 'risk_item'`); las órdenes usan la misma tabla para su número de recibo (`entity_type = 'order'`). Se ve en el detalle del risk item y, en los canales habilitados, como **columna de los listados** de Risk Items y Órdenes, con `-` cuando la entidad todavía no tiene número asignado. La búsqueda de esas pantallas lo acepta: cuando el término es numérico, el ExternalId se suma como criterio a la búsqueda habitual, sin restringirla. Los listados solo **leen** el número: nunca lo asignan ni avanzan la secuencia, y si el lookup falla la página se devuelve igual, sin ExternalId. Qué canales lo usan sale de `auth_config.PAYMENTS.channels` de la integración **`SFTP`**; el dashboard lo consulta con `channels.isExternalIdEnabled` y oculta la columna en el resto.
+
 Para el contrato exacto que consume el orquestador, el código define **`StandardRiskItem`** (ver [Orquestador e integraciones](./orquestador-integraciones.md)): es la forma canónica de serializar “este risk item” para **`adapter.emit(...)`**.
 
 ## Ciclo de vida (vista de producto)
