@@ -128,6 +128,15 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
 
+## Listados del dashboard (filtros y ExternalId)
+
+Las pantallas de **Risk Items** y **Órdenes** piden en el mismo batch el contador y la página, y ambos procedimientos comparten los filtros:
+
+- `riskItems.countByFilter` y `riskItems.selectByFilter` aplican los mismos criterios —fechas, búsqueda, paquete, estado y **filtro de integraciones**— desde un único helper, de modo que el contador no pueda contar filas distintas de las que devuelve el listado. El significado de cada opción del filtro de integraciones está en [Orquestador e integraciones](../arquitectura/orquestador-integraciones.md).
+- `channels.isExternalIdEnabled` (`{ channel_id }`) devuelve si ese canal usa **ExternalId**. Comprueba primero que quien pregunta vea el canal y responde `FORBIDDEN` si no; el gate en sí sale de una integración global, no acotada por canal. Las dos tablas lo usan para decidir si muestran la columna.
+- Con el gate habilitado, `riskItems.selectByFilter` y `orders.selectByFilter` enriquecen la página con `external_id` mediante una **lectura read-only** sobre `carrier_external_ids`: no asignan números. Si esa lectura falla, el procedimiento devuelve la página igual, sin `external_id`.
+- La búsqueda de ambas pantallas acepta un ExternalId cuando el término es numérico; en cualquier otro caso se comporta como hasta ahora (`uid`, y en Órdenes también nombre de cliente y `uid` del risk item).
+
 ## Llamada desde servidor o scripts (avanzado)
 
 Si necesitas invocar procedimientos sin React, crea un **caller** con `createCallerFactory` desde el contexto de tRPC (patrón oficial). En la mayoría de los casos el equipo usa **rutas REST** (`/api/integrations/...`) o **jobs** en lugar de duplicar lógica vía caller; úsalo solo si ya tenéis helper en el repo.
