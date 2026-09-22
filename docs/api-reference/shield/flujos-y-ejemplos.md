@@ -69,6 +69,30 @@ Los campos exactos dependen de `v.riskItem.shield.insert()` en el código.
 | `404` | Recurso no encontrado |
 | `422` | Datos no procesables (`unprocessableContent`) |
 
+## Validación de entrada y de salida
+
+Las rutas Shield se construyen con el helper `api(request).input(...).handle(...)`, que **valida la entrada** con Zod (cabeceras, query, body y params dinámicos). Si la entrada no pasa, la respuesta es `422` y el handler **no llega a consultar la base**: por ejemplo, en los listados paginados un rango con `to - from` mayor al máximo permitido se rechaza antes de la query.
+
+La validación de la **salida** es opcional y depende de cómo cierre cada ruta:
+
+| Cierre de la ruta | Comportamiento |
+|-------------------|----------------|
+| `.output(schema)` | La respuesta se valida contra un schema Zod antes de emitirse. Si no encaja, el cliente recibe `422` con `error: "Internal validation failed"` **aunque la query haya ido bien**, y el fallo se reporta a Sentry con el tag `shield.failure: output_validation`. En listados el schema es un `z.array(...)`: **una sola fila inválida invalida la respuesta completa**. |
+| `.response` | La respuesta del handler sale tal cual, sin validar. Los datos viajan como los devuelve la base. |
+
+La mayoría de las rutas todavía cierran con `.output(...)`. La excepción documentada es **`GET /api/shield/v1/packages`** (ver abajo).
+
+### `GET /api/shield/v1/packages` no valida su salida
+
+Esta ruta cierra con `.response`. Consecuencias para el consumidor:
+
+- Devuelve `200` con **todas** las filas del canal: una fila con `pricing_rules` vacío (`{}`) o con un `billing_cycle` fuera del enum del schema ya no tumba el lote entero.
+- Como la query usa `select: "*"` y no hay schema que recorte claves, la respuesta incluye columnas que antes no viajaban: `category_id`, `created_at`, `updated_at`, `deleted_at`.
+- La validación de **entrada** sigue igual: rango de paginación inválido → `422`; falta `x-channel-id` → lo corta el middleware.
+- Un error de la query sigue devolviendo `422` con su `details`.
+
+Las demás rutas de packages (`ia/v1/packages`, `v1/packages/[packageId]`, `ia/v1/packages/[packageId]`) **sí** validan salida con el mismo schema, así que siguen pudiendo responder `422 Internal validation failed` sobre datos que existen.
+
 ## Referencias
 
 - [Autenticación y tokens](./autenticacion-y-tokens)

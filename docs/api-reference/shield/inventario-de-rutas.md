@@ -45,7 +45,7 @@ Listado **orientado a desarrollo**, agrupado por **dominio**. Las rutas reales i
 | `.../policies/[policyNumber]` | `v1`, `ia/v1` |
 | `.../policies/[n]/versions`, `.../versions/[versionNumber]` | `v1`, `ia/v1` |
 | `.../policies/[n]/subject-schema` | `v1`, `ia/v1` |
-| `.../packages`, `.../packages/[packageId]` | `v1`, `ia/v1` |
+| `.../packages` (listado; en `v1` **sin validación de salida** — ver [Flujos y ejemplos](./flujos-y-ejemplos)), `.../packages/[packageId]` | `v1`, `ia/v1` |
 | `.../products` | `v1`, `ia/v1` |
 | `.../coverages`, `.../coverages/[coverageId]` | `v1`, `ia/v1` |
 | `.../variants`, `.../variants/[variantId]` | `v1`, `ia/v1` |
