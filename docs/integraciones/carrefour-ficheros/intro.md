@@ -66,10 +66,24 @@ Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
 
-- **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad y parámetros propios de la familia (p. ej. la `clase` de EIAC).
+- **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad, la **entidad** dueña del fichero (`carrier`) y parámetros propios de la familia (p. ej. la `clase` de EIAC).
 - **`channels[]`** — por canal (`id_channel`): credenciales SFTP, `send_time` / `read_time` y los mapeos que cada familia necesita.
 
 La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `skip_weekends`) determina la fecha de cierre que se estampa en el fichero.
+
+### Entidad del report (`carrier`)
+
+El campo `carrier` de cada report identifica la **entidad dueña del fichero**, que puede ser una aseguradora o no serlo. Hoy los reports de la integración `SFTP` declaran `Mapfre España` (EIAC, RIC, MIC, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`) y `Carrefour` (`PAYMENTS_DAILY`). El valor se escribe y se muestra tal cual, con esa grafía.
+
+Lo usan dos caminos:
+
+- **Dispatch** — persiste la entidad del report en `risk_item_data.carrier` de la emisión.
+- **Pantalla Batch Jobs** (router tRPC `batchJobs`) — el `auth_config` es la **fuente del filtro de entidad**, no el histórico de emisiones:
+  - **Selector** (`batchJobs.carriers`): lista los `carrier` distintos de los bloques cuyo `channels[].id_channel` incluye el canal en sesión, ordenados alfabéticamente sin distinguir mayúsculas. Se deduplica por `trim().toLowerCase()` y se muestra la primera grafía leída. No depende del rango de fechas ni de los demás filtros; la opción por defecto es **"Todas las entidades"**.
+  - **Filtro**: el router resuelve la entidad elegida a los **slugs** de sus reports (mismo scope por canal) y se los pasa al RPC `batch_job_groups` como `p_slugs`. Sin entidad no se manda y no hay filtro; si la entidad no resuelve ningún slug viaja `p_slugs: []` y la tabla sale vacía. El filtro se aplica **después de agrupar**, sobre el slug del grupo (el primer slug no nulo de la serie), así que no altera los contadores de intentos.
+  - **Valor mostrado**: la entidad de cada fila y del detalle de cada intento se resuelve **por slug contra el `auth_config`**; el `risk_item_data.carrier` del histórico queda solo como fallback cuando el slug no resuelve.
+
+Un report sin `carrier` no aporta opción al selector: sus ficheros solo se ven con "Todas las entidades". Si la integración `SFTP` no existe, su `auth_config` está vacío o falla la lectura, el selector queda vacío y la pantalla sigue usable.
 
 ## Multi-tenant y seguridad
 

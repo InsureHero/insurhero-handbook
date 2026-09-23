@@ -123,6 +123,7 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrations` | Catálogo y conexiones |
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
+| `batchJobs` | Pantalla **Batch Jobs**: ficheros SFTP enviados/recibidos agrupados por fichero, KPIs por periodo, intentos y selectores de filtro. La entidad (`carriers`) sale del `auth_config` de `SFTP` — ver [Ficheros Carrefour](../integraciones/carrefour-ficheros/intro.md#entidad-del-report-carrier) |
 
 ### Otros
 
