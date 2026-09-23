@@ -28,6 +28,8 @@ Para el contrato exacto que consume el orquestador, el código define **`Standar
 4. **Postventa del titular** — OTP, JWT y rutas **`/api/postsales/v1/...`** operan sobre risk items donde el email es titular; la RPC **`postsales_risk_item_ids_by_holder_email`** acota elegibilidad.
 5. **Reclamos** — Los siniestros se anclan al contexto del contrato; las rutas Shield de **`.../claims`** y **`.../claims/[id]/workflow`** conviven con el mismo modelo de dominio.
 
+**Estados (`risk_items.status`)** — Los valores válidos son los de `RISK_ITEM_STATUSES` en `packages/shield-contract/src/risk-item.ts` —`ACTIVE`, `INACTIVE`, `PENDING`, `RESCISSION`, `EXPIRED`, `CANCELLED`—, siempre en **mayúsculas**; es el enum con el que Zod valida la salida de los endpoints de risk item, así que un valor fuera de él hace fallar la respuesta. Los tres caminos de cancelación (botón *Cancel* del dashboard, `PATCH /shield/v1/risk-items/{id}/cancel` y la cascada automática por order cancelada o por impago) escriben `CANCELLED` desde la constante del contrato (`RISK_ITEM_STATUS.CANCELLED`), y lo mismo se registra en la auditoría (`status_history` y `status_log` con `entity_type = 'risk_item'`). No confundir con **`payment_status`** ni con el estado de las **orders**, que son en minúscula por contrato (incluido `cancelled`). El filtro de estado de la tabla de Risk Items normaliza a mayúsculas lo que llega por URL (`?status=cancelled` filtra igual que `CANCELLED`), y algunos mappers hacia carriers (p. ej. `isCancelledStatus`, el tipo de suplemento MIC o el movimiento Open Systems de Carrefour) siguen comparando sin distinguir mayúsculas como defensa ante datos externos.
+
 **Cancelación según fecha** — La ruta Shield `.../risk-items/[riskItemId]/cancel` interpreta la fecha de baja a **nivel de día (UTC)**: si es **hoy** (o el literal `"cancel"`), el risk item pasa a `CANCELLED` de inmediato, se registra en el historial de estados y se encola la notificación al carrier; si es una **fecha futura**, solo se guarda el `end_date` y el ciclo diario lo cancela cuando llegue; una **fecha pasada** se rechaza (`422`). Cancelar algo ya cancelado es idempotente.
 
 Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integraciones.md).
@@ -43,6 +45,21 @@ Más contexto de flujo: [Flujos e integraciones](../producto/flujos-e-integracio
 | **Dispatch / post-sales integration** `/api/integrations/dispatch`, `/api/integrations/post-sales` | Orquestación tras venta o tras cambios postventa. |
 
 Ejemplos `curl` mínimos: [Shield: flujos y ejemplos](../api-reference/shield/flujos-y-ejemplos.md).
+
+### Listados de Risk Items y Orders en el dashboard
+
+- **Filtros en la URL** — Los filtros de las dos tablas viven en los search params (hook `useUrlFilterParams`, junto a `useTablePagination` en `components/global/Table/Table.hooks.ts`), escritos con `router.replace` sin agregar entradas al historial. Recargar, compartir la URL o volver del detalle (botón atrás, `GoBack` o breadcrumb, que reciben los filtros de origen en el param `list`) restaura la misma búsqueda. Un valor que el selector no ofrece cae en el default de ese filtro; el botón **Limpiar** (visible solo con filtros activos) deja la URL sin params de filtro. La búsqueda por texto se confirma con Enter o al salir del campo.
+- **Id de emisor (ExternalId)** — Ambas tablas muestran la columna *Issuer Id* / *Id de emisor* (número de póliza o recibo en `carrier_external_ids`, `"-"` si no hay) solo en los canales habilitados en `auth_config.PAYMENTS.channels` de la integración `SFTP`; el cliente lo consulta con `channels.isExternalIdEnabled`. La lectura es read-only (nunca asigna numeración) y, si falla, la página carga sin la columna rellena. Un término de búsqueda **numérico** busca además por `external_id`, sumando resultados a la búsqueda por `uid`.
+- **Filtro de integraciones (Risk Items)** — Se resuelve en el servidor (`countByFilter` / `selectByFilter`, helpers `riskItems.listFilters.helpers.ts` y `riskItems.integrationFilter.helpers.ts`), sobre todas las emisiones de `integration_emissions` del risk item, sin depender del provider ni del `sales_integration_slug`:
+
+| Opción | Criterio |
+|---|---|
+| All succeeded (`SUCCESS`) | Al menos una emisión y todas `SUCCESS` |
+| Has errors (`FAILED`) | Al menos una emisión distinta de `SUCCESS` (incluye `PENDING` y `RETRYING`) |
+| Abandoned (`ABANDONED`) | Al menos una emisión `ABANDONED` |
+| Partial (`PARTIAL`) | Al menos una `SUCCESS` y al menos una no `SUCCESS` |
+
+Un risk item sin emisiones solo aparece con *Todas las integraciones*. El contador y la paginación cuentan únicamente las filas que cumplen el filtro.
 
 ## Lecturas relacionadas
 

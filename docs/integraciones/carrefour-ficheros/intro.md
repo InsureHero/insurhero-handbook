@@ -44,7 +44,8 @@ Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** par
 
 Un **cron horario** (`carrefour_dispatch`, pg_cron, uno por canal Carrefour) lee `send_time` y `read_time` de la config del canal (en su timezone) y, cuando coincide la hora, dispara `POST /dispatch` con la operación **`send`** o **`read`**. El dispatch:
 
-- **Consolida** las filas `pending` del slug (para los EIAC diarios, acotando por la **ventana de 24 h** según `date`).
+- **Consolida** las filas `pending` del slug (para los EIAC diarios, acotando por la **ventana de 24 h** según `date`; el resto de slugs barre todos sus `pending`, sin ventana).
+- **Bloquea duplicados**: antes de construir el fichero cruza los `order_ids` del lote contra los de las **últimas 20 emisiones entregadas** (`send` / `retry_send` en `SUCCESS`) del mismo slug. Si alguno se repite, **no envía nada**, lo deja en `console.error` y devuelve `emission_status: BLOCKED_DUPLICATE`. Los reports cuyo registro es acumulativo por diseño (p. ej. `RIC_DAILY`, que resetea a `pending` al acumular operaciones sobre la misma póliza) se excluyen del guard con `accumulative: true` en su report.
 - **Arma el fichero**: concatena los `register` para los formatos de texto; para EIAC envuelve los fragmentos en la cabecera XML.
 - Lo sube a un **bucket** y lo envía por **SFTP**.
 - El nombre del fichero se resuelve con **tokens de fecha** (`{YYYY}`, `{MM}`, `{DD}`, `{MMYYYY}`) desde la plantilla configurada.
@@ -60,13 +61,37 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 ### 5. Registro del despacho
 
-Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
+Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). En `risk_item_data` se guardan, entre otros, la `operation` (`send`, `retry_send`, …), el `filename`, el `file_size_bytes` y los **`order_ids`** de las filas incluidas; los reintentos y el guard anti-duplicados se apoyan en esos datos. Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
+
+### 6. Reintentos de envío
+
+Un envío fallido se reintenta con el cron **`sftp-retry-drain`** (`apps/next/src/app/api/cron/sftp-retry-drain/route.ts`), que llama a `POST /api/integrations/carrefour-payments/retry`. El retry **no reconstruye** el fichero: retransmite el que ya está en el bucket.
+
+- **Agrupación**: el drain lee las emisiones SFTP de la **hora UTC en curso** ordenadas por `created_at`, las agrupa por fichero (y por canal para las lecturas) y toma el **`send` original** como muestra para armar el retry (slug, `order_ids`, `file_size_bytes`, …). Un grupo con algún `SUCCESS` no se reintenta.
+- **Política**: `retry_config` de la integración `SFTP` (`max_attempts` y offsets en minutos por intento); por defecto 3 intentos, a los 15 y 30 minutos. Un reintento que caería fuera de la hora del envío original no se dispara.
+- **Resolución de `order_ids`**: si el body no los trae, se resuelven **antes de persistir nada** desde la primera emisión del fichero que los lleve (normalmente el `send` original). La emisión `retry_send` también los graba.
+- **Anti-doble-envío**: antes de retransmitir se comparan los **bytes** del fichero en `remote_path` con el `file_size_bytes` registrado:
+
+| Caso | Qué se hace |
+|---|---|
+| El fichero remoto existe y sus bytes coinciden | Se salta el reenvío (`skippedResend: true`) y solo se marcan las órdenes como `sent` |
+| Existe pero los bytes no coinciden (subida truncada) | Se reenvía; sobrescribe el mismo nombre, no duplica |
+| No hay `file_size_bytes` registrado o el fichero no existe | Se reenvía |
+| La comprobación de tamaño falla (relay caído) | Warning en logs y se reenvía |
+
+- **Precierre**: si el report tiene `send_via_sftp` desactivado por precierre, el retry nunca transmite por SFTP; si `mark_as_sent` está desactivado, no marca las órdenes.
+
+Tras un reenvío exitoso, las `temp_carriers_orders` del fichero pasan a `sent` sin intervención manual.
+
+:::caution Limitación conocida
+Como el drain solo mira la hora UTC en curso, un fichero cuyo envío y reintentos fallan todos dentro de esa hora **no se vuelve a reintentar** automáticamente; hoy requiere reenvío manual.
+:::
 
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
 
-- **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad y parámetros propios de la familia (p. ej. la `clase` de EIAC).
+- **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad y parámetros propios de la familia (p. ej. la `clase` de EIAC). Flags de envío por report: `pre_close_date`, `mark_as_sent` y `send_via_sftp` (por defecto activos) y `accumulative` (por defecto `false`; exime al report del guard anti-duplicados).
 - **`channels[]`** — por canal (`id_channel`): credenciales SFTP, `send_time` / `read_time` y los mapeos que cada familia necesita.
 
 La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `skip_weekends`) determina la fecha de cierre que se estampa en el fichero.
@@ -81,6 +106,8 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 
 - Generación por orden: `apps/next/src/app/api/integrations/carrefour-payments/order/route.ts`
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
+- Reintentos: `apps/next/src/app/api/integrations/carrefour-payments/retry/route.ts` y el cron `apps/next/src/app/api/cron/sftp-retry-drain/route.ts`
+- Estado del despacho (`order_ids`, tamaño remoto, guard anti-duplicados): `apps/next/src/integrations/carrefour-payments/dispatch-state.ts`
 - Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
 
