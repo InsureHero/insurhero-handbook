@@ -39,6 +39,8 @@ Registro de información de clientes, pólizas, intervinientes y contactos.
 
 Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden.
 
+El registro RIC es **acumulativo por póliza**: una nueva operación vuelve a poner el registro en `pending`, así que el mismo `order_id` viaja en varios ficheros. Por eso los cinco reports RIC llevan `accumulative: true` y quedan fuera del guard anti-duplicado del [despacho](./intro.md).
+
 ## OPEN_SYSTEMS / OPEN_SYSTEMS_V2 (SSAA — sistemas abiertos)
 
 Fichero **mensual** de movimientos de póliza/recibo para el sistema de "sistemas abiertos" de MAPFRE. Nombre por defecto `BUZON_MENSUAL_{MMYYYY}_CARREFOUR`.

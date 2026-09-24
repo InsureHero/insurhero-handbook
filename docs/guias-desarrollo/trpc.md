@@ -135,6 +135,35 @@ createMutation.mutate({
 });
 ```
 
+## Usar en el Servidor (RSC)
+
+En Server Components, layouts y route handlers se usa **`trpcServer`** (`src/config/trpc.server.config.ts`), que llama a los procedures directamente sobre `appRouter` (sin HTTP) con `createServerSideHelpers`:
+
+```typescript
+import { Hydrate } from '@tanstack/react-query';
+import { trpcServer } from 'config/trpc.server.config';
+
+const Layout = async ({ children }) => {
+  // Lectura directa en el servidor
+  const admin = await trpcServer.admins.selectById.fetch();
+
+  // Prefetch para hidratar el cliente
+  await trpcServer.channels.select.prefetch();
+  const dehydratedState = trpcServer.dehydrate();
+
+  return <Hydrate state={dehydratedState}>{children}</Hydrate>;
+};
+```
+
+Cómo se comporta:
+
+- **Una instancia por request.** `trpcServer` se resuelve con `cache()` de React sobre el `QueryClient` de `getQueryClient()` (`src/config/query.server.config.ts`). Dentro de un mismo request, layout y page comparten la caché: lo que se prefetcheó en el layout se reutiliza en la page (con `staleTime` de 15 min) y sale en el `dehydrate()`. **Entre requests no se comparte nada**, así que no hay fuga de datos entre usuarios ni channels.
+- **`dehydrate()` solo serializa queries en `success`** (`defaultShouldDehydrateQuery`); ignora las opciones que se le pasen. Una query que falla (p. ej. `UNAUTHORIZED` sin sesión) no llega a `<Hydrate>` y el cliente la vuelve a pedir al montar.
+- **Fuera del render RSC** (route handlers) `cache()` no memoiza: cada acceso a `trpcServer` crea sus propios helpers y `QueryClient`. Sirve para `.fetch()` aislados (como hace `getRole()`), pero un `prefetch` seguido de `dehydrate()` en un route handler devolvería vacío.
+- Los helpers **no reciben el contexto real** de `createContext`; la sesión se resuelve en los middlewares de `src/trpc/trpc.ts` a partir de las cookies del request.
+
+> `trpcServer` importa `server-only` (vía `query.server.config.ts`): un test que lo cargue, directa o indirectamente (p. ej. a través de `role.utils.ts`), tiene que mockear `server-only`.
+
 ## Optimistic Updates
 
 ```typescript

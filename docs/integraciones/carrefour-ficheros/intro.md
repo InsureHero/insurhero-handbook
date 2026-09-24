@@ -44,7 +44,8 @@ Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** par
 
 Un **cron horario** (`carrefour_dispatch`, pg_cron, uno por canal Carrefour) lee `send_time` y `read_time` de la config del canal (en su timezone) y, cuando coincide la hora, dispara `POST /dispatch` con la operación **`send`** o **`read`**. El dispatch:
 
-- **Consolida** las filas `pending` del slug (para los EIAC diarios, acotando por la **ventana de 24 h** según `date`).
+- **Consolida** las filas `pending` del slug (para los EIAC diarios, acotando por la **ventana de 24 h** según `date`; el resto de slugs barre todos los `pending` sin ventana). Si no hay nada, no toca el SFTP y deja una emisión de traza (`skippedEmpty`, `SKIPPED_EMPTY`).
+- **Guard anti-duplicado**: antes de construir el fichero cruza los ids del lote contra los `order_ids` de las **últimas 20 emisiones entregadas** del mismo slug (`send` / `retry_send` en `SUCCESS` que transmitieron de verdad; se descartan los precierres `stagedOnly` y los vacíos `skippedEmpty`). Si hay solape, **no se envía**: se persiste una emisión `operation: blocked` con los ids repetidos y la respuesta lleva `emission_status: BLOCKED_DUPLICATE`. Los slugs marcados como `accumulative` en su report se saltan el guard (ver [Configuración](#configuración-auth_config)).
 - **Arma el fichero**: concatena los `register` para los formatos de texto; para EIAC envuelve los fragmentos en la cabecera XML.
 - Lo sube a un **bucket** y lo envía por **SFTP**.
 - El nombre del fichero se resuelve con **tokens de fecha** (`{YYYY}`, `{MM}`, `{DD}`, `{MMYYYY}`) desde la plantilla configurada.
@@ -60,13 +61,35 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 ### 5. Registro del despacho
 
-Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
+Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). En `risk_item_data` se guardan, entre otros, la `operation`, el `filename`, los `order_ids` del lote, `file_size_bytes` y `marked_as_sent`.
+
+Tras un envío `SUCCESS` (y si el report no está en precierre con `mark_as_sent: false`), las filas del lote pasan a `status = 'sent'` con su `sent_at`. El marcado:
+
+- Se hace **antes** de persistir la emisión, de modo que `marked_as_sent` refleja el resultado real y no la intención.
+- Va **troceado en lotes de 200 ids** (el `.in()` de PostgREST viaja en la query string y un único update con un lote grande, p. ej. 1051 ids, no llegaba a aplicarse).
+- Si un lote falla a mitad, los anteriores quedan marcados y la emisión registra `marked_as_sent: false`; los que quedaron en `pending` los frena el guard anti-duplicado en el siguiente envío.
+
+Otras operaciones que se registran sin transmitir: `blocked` (guard anti-duplicado) y `aborted` (el fichero no se pudo construir o subir al bucket; guarda el motivo y los ids del lote y se relanza el error). El drain de reintentos solo mira `send` / `retry_send`, así que las ignora.
+
+### 6. Reintentos (`sftp-retry-drain`)
+
+Los envíos fallidos los recoge el cron **`GET /api/cron/sftp-retry-drain`**, que agrupa por fichero las emisiones SFTP de la **hora UTC en curso** y, si no hay ningún `SUCCESS` y quedan intentos (`retry_config` de la integración `SFTP`; por defecto 3 intentos con offsets de 15 y 30 min, sin cruzar la hora base), llama a `POST /api/integrations/carrefour-payments/retry`. El retry **no reconstruye** el fichero: retransmite el que ya está en el bucket.
+
+- **`order_ids`**: el drain toma como referencia la emisión `send` original del grupo. Si el retry llega sin `order_ids`, los resuelve **antes de escribir nada**, desde la emisión más antigua del fichero que los lleve. La emisión `retry_send` persiste esos `order_ids`.
+- **Anti-doble-envío por tamaño**: antes de retransmitir compara los bytes del fichero en `remote_path` con el `file_size_bytes` de la emisión. Solo si coinciden se salta el reenvío (`skippedResend`) y se limita a marcar las órdenes como `sent`. Si no coinciden (fichero truncado), no hay tamaño registrado o la comprobación falla, **se reenvía**: el nombre es el mismo, así que sobrescribe y no puede duplicar.
+- **Precierre**: si el report tiene `send_via_sftp: false` en ese momento, el retry nunca transmite ni marca nada.
+
+> Un fichero cuyos reintentos fallan todos dentro de la misma hora UTC deja de ser visible para el drain en la hora siguiente y no se vuelve a reintentar automáticamente.
+
+### Qué cuenta como entrega
+
+Una emisión `SUCCESS` **solo prueba entrega si transmitió**. De las tres rutas que escriben `SUCCESS` sin mandar nada —fichero vacío (`skippedEmpty`), precierre con `send_via_sftp: false` (`stagedOnly`) y reenvío saltado porque la copia remota ya coincide (`skippedResend`)— solo la última es una entrega real. El guard anti-duplicado aplica este criterio.
 
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
 
-- **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad y parámetros propios de la familia (p. ej. la `clase` de EIAC).
+- **`reports[]`** — un report por slug, con su plantilla de nombre de fichero, periodicidad y parámetros propios de la familia (p. ej. la `clase` de EIAC). El flag **`accumulative`** (default `false`) excluye el slug del guard anti-duplicado; está en `true` para los cinco reports RIC, cuyo registro repite `order_ids` a propósito, y se siembra **por migración** (no a mano) para que viaje con cada release.
 - **`channels[]`** — por canal (`id_channel`): credenciales SFTP, `send_time` / `read_time` y los mapeos que cada familia necesita.
 
 La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `skip_weekends`) determina la fecha de cierre que se estampa en el fichero.
@@ -81,6 +104,8 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 
 - Generación por orden: `apps/next/src/app/api/integrations/carrefour-payments/order/route.ts`
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
+- Reintentos: `apps/next/src/app/api/cron/sftp-retry-drain/route.ts` y `apps/next/src/app/api/integrations/carrefour-payments/retry/route.ts`
+- Estado de envío (marcado, resolución de `order_ids`, tamaño remoto, guard): `apps/next/src/integrations/carrefour-payments/dispatch-state.ts`
 - Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
 
