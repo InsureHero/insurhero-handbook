@@ -23,6 +23,8 @@ Cada prefijo bajo `/api/shield` define un **contrato** y un **tipo de cliente** 
 
 No mezcles tokens entre ramas: un JWT de `v1` no sirve para `ia` ni `integrations`.
 
+El **MCP de acciones** (`packages/mcps/insurehero`) es un consumidor de `v1` y de `ia/v2`: mantiene un token por rama y resuelve el canal desde la api_key, nunca por parámetro. Ver [Web builder y servidores MCP](../../guias-desarrollo/web-builder-y-mcps.md).
+
 ## Paridad de recursos
 
 Muchos recursos existen en **varios** namespaces (misma idea de negocio, distinto prefijo). La validación y los campos pueden variar ligeramente; la fuente de verdad es cada **`route.ts`**.

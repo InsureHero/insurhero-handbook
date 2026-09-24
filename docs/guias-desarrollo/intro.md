@@ -12,6 +12,7 @@ Bienvenido a las guías de desarrollo de InsureHero. Aquí se concentra el **có
 | [Guía de componentes](./componentes.md) | Componentes React, carpetas, formularios, estilos. |
 | [Guía de tRPC](./trpc.md) | Routers, procedimientos y uso en cliente. |
 | [Landing page Vidanta](./landing-page-postventa.md) | Repo aparte (`landing-next`), variables y flujo post‑sales. |
+| [Web builder y servidores MCP](./web-builder-y-mcps.md) | Maker de frontales (sandbox E2B), MCP de acciones y de documentación sobre Shield, tabla `sandboxes`. |
 
 ### Orden de lectura recomendado
 
