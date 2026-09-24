@@ -27,6 +27,17 @@ Listado **orientado a desarrollo**, agrupado por **dominio**. Las rutas reales i
 | `.../risk-items/[id]/cancel` | `v1`, `ia/v1` |
 | `.../risk-items/[id]/rescissions` | `v1`, `ia/v1` |
 
+**Listado de integración (`GET integrations/v1/risk-items`)** — Además de la paginación `from`/`to` y `policyId`, acepta filtros opcionales:
+
+| Parámetro | Comportamiento |
+|-----------|----------------|
+| `start_date` / `end_date` | Van **juntos o ninguno**. Filtran por `created_at` en UTC; `end_date` se expande a fin de día (`23:59:59.999`). `start_date <= end_date` y el rango no puede superar **6 meses** (mismo tope que `.../orders`). Si no se cumple, responde `422`. |
+| `status` | Uno de `RISK_ITEM_STATUSES` (`ACTIVE`, `INACTIVE`, `PENDING`, `RESCISSION`, `EXPIRED`, `CANCELLED`); se combina con `policyId` si viene. Un valor fuera del enum responde `422`. |
+
+Sin estos parámetros, el listado no cambia.
+
+**`external_id` en risk items** — El listado `integrations/v1/risk-items` y el detalle `v1/risk-items/[riskItemId]` agregan `external_id` (número, el número de póliza que exige el carrier) leyendo **en solo lectura** la tabla `carrier_external_ids`. Consultar no crea números ni consume la secuencia. La key **solo aparece si hay mapeo**; si no lo hay, o si la lectura falla, se **omite** (nunca `null`) y el endpoint responde `200` igual. El listado, que puede abarcar varios canales vía `x-webhooks`, hace una lectura por `channel_id`.
+
 ## Reclamos (claims)
 
 | Recurso (patrón) | Presente en |
