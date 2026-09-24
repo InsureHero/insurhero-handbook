@@ -135,6 +135,27 @@ createMutation.mutate({
 });
 ```
 
+## Usar en el Servidor (RSC)
+
+En Server Components, layouts y route handlers se usa **`trpcServer`** (`src/config/trpc.server.config.ts`), que ejecuta los procedures directamente sobre el `appRouter` (sin HTTP):
+
+```typescript
+import { trpcServer } from 'config/trpc.server.config';
+
+// Dato para el propio render
+const admin = await trpcServer.admins.selectById.fetch();
+
+// Prefetch + hidratación hacia el cliente
+await trpcServer.channels.select.prefetch();
+return <Hydrate state={trpcServer.dehydrate()}>{children}</Hydrate>;
+```
+
+- **Una instancia por request.** `trpcServer` es un `Proxy` que resuelve, vía `cache()` de React, unos helpers sobre el `QueryClient` de `getQueryClient()` (`src/config/query.server.config.ts`). Layout y page del mismo request comparten caché —lo prefetcheado en el layout se reusa en el page y sale en el `dehydrate()`—, pero **requests distintos nunca comparten caché**. Esto importa porque las query keys como `admins.selectById` o `channels.select` no llevan input: la identidad sale de las cookies dentro del procedure.
+- **`dehydrate()` solo serializa queries en `success`.** Una query en error no se hidrata (el cliente la vuelve a pedir al montar). Las opciones que se le pasen a `dehydrate()` se ignoran.
+- Dentro de un request, un `.fetch()` tras un `prefetch` de la misma key reusa el dato (`staleTime` de 15 min del `QueryClient` de servidor).
+- **Fuera del render RSC** (route handlers) `cache()` no memoiza: cada acceso a `trpcServer` crea helpers y `QueryClient` propios. Sirve para un `.fetch()` aislado (p. ej. `getRole()`), pero un `prefetch` seguido de `dehydrate()` devolvería vacío.
+- `trpcServer` no recibe el `createContext` real: los middlewares de `src/trpc/trpc.ts` arman la sesión a partir de las cookies.
+
 ## Optimistic Updates
 
 ```typescript
