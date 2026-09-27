@@ -62,6 +62,18 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
 
+Cada reintento genera una fila nueva, así que un mismo fichero puede tener varias filas `FAILED`. La racha de fallos se deriva agrupando por `external_id` y contando desde el último `SUCCESS`; eso lo hace el RPC **`batch_job_groups`**.
+
+### Consulta de fallos de envío (Shield)
+
+**`GET /api/shield/v1/sftp-failures`** (Shield Standard, JWT de canal) expone las filas de `batch_job_groups` para el canal del token, sin sesión, pensado para que un workflow programado dispare alertas del lado servidor.
+
+- **Canal:** sale del `sub` del token (`x-channel-id`); no se acepta por query.
+- **Query:** `status` (opcional, string libre que se pasa tal cual al RPC) y `direction` (opcional, `inbound` | `outbound`; otro valor → `422`). Si se omiten, se usan los defaults del RPC (todos los estados y ambas direcciones).
+- **Respuesta:** `{ data: [...] }`, una fila por serie con `filename`, `integration`, `group_status`, `direction`, `failed_attempts`, `result_message` y `finished_at` (`filename`, `integration`, `result_message` y `finished_at` pueden venir `null`). Sin filas → `{ data: [] }`.
+- **Errores:** sin token o con un token inválido → `401` (middleware); error del RPC → `422`.
+- El endpoint **no aplica umbral**: el consumidor decide a partir de `failed_attempts` (p. ej. alertar con `status=failed&direction=outbound` y `failed_attempts >= 3`). Un fichero cuyos fallos van seguidos de un `SUCCESS` no aparece como `failed`.
+
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
@@ -82,6 +94,7 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 - Generación por orden: `apps/next/src/app/api/integrations/carrefour-payments/order/route.ts`
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
 - Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
+- Consulta de fallos (Shield): `apps/next/src/app/api/shield/v1/sftp-failures/route.ts`
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
 
 ## Referencias
