@@ -7,6 +7,8 @@ Los **skills** entran en esta historia, pero con un matiz importante: en InsureH
 ## Funcionalidades
 
 - **Automatizar con el builder de flujos (“Flows”)** — Crear flujos *trigger-first* sin código: “cuando pase X (un evento del sistema, como una orden creada, o un cron) → hacé Y”. Cada flujo referencia **conexiones y templates del canal** (nunca secretos embebidos) y se versiona con **borrador / publicado**, así se puede editar en caliente sin cambiar lo que corre en producción hasta apretar *Publish*.
+- **Encadenar flujos y procesar por lotes** — Un flujo puede recorrer listas (con resumen de éxitos y fallos), paginar APIs externas, recordar hasta dónde llegó para que la próxima corrida traiga solo lo nuevo, y dejar datos en **datasets compartidos** que otro flujo consulta o que disparan otro flujo al actualizarse.
+- **Enterarse cuando un flujo falla** — Cada flujo puede avisar por email o webhook (p. ej. Slack o Discord) cuando falla varias corridas seguidas, y otra vez cuando se recupera.
 - **Definir y recorrer el ciclo del reclamo** — Estados claros (recibido, en revisión, pendiente de documentos, resuelto, cerrado, etc., según cómo tu canal lo modele), con trazabilidad de quién movió el expediente y cuándo.
 - **Operar desde el dashboard y desde integraciones** — Mismas reglas de negocio expuestas vía **Shield** para partners o automatizaciones, sin bifurcar la verdad en hojas paralelas.
 - **Disparar comunicación en puntos del flujo** — Cuando el diseño lo permite, el sistema puede enviar **correos**, registrar **eventos** o llamar **webhooks del cliente** para que un CRM u otra herramienta reaccione al cambio de estado.
