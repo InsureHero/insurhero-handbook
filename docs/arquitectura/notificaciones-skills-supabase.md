@@ -87,6 +87,37 @@ Además de los correos operativos (reporte diario por skill), el sistema envía 
 - Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
 - El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
 
+### Configuración por canal → evento → paquete
+
+El envío es **config-driven**: no hay código por producto. El adapter lee la fila `slug = 'MAWDY_MAIL'` de `integrations` — credenciales Cognito en `auth_config`, plantillas en `config` — y resuelve:
+
+1. **Canal** (`config.channels[]` por `channel_id`); su `partner` define la carpeta de templates.
+2. **Evento** (`events.POLICY_CREATED`, `events.POLICY_CANCELLED`, …).
+3. **Paquete** (`packages[]` por el `package_id` del risk item). Si el paquete no está declarado, la emisión falla con `PACKAGE_NOT_CONFIGURED` y `dispatch-v2` la reintenta.
+
+Cada entrada de paquete declara:
+
+| Clave | Uso |
+|-------|-----|
+| `id` | `package_id` del producto |
+| `name` | Nombre de plan; lo rinde el token `{{package.name}}` |
+| `template` | Archivo `.html` dentro de la carpeta del `partner` |
+| `subject` | Asunto base; el adapter le antepone el nombre del titular (`Nombre, <subject>`), o lo envía sin prefijo si no hay nombre |
+| `attachments` (opcional) | PDF a generar desde una plantilla en el bucket `mails` (`bucket_path`), cifrado con el dato indicado en `password`, renombrado (`rename_to`) y guardado en el risk item (`save_to`). Si falla, se loguea y el correo **se envía sin adjunto** |
+
+Los tokens `{{package.*}}` se resuelven contra la entrada del paquete (no contra la tabla `packages`), así que varios paquetes pueden compartir un mismo `.html` y diferir solo en los datos de la póliza. El resto de variables sale del `mapping` fusionado de canal, evento y paquete (el más específico gana) y de claves universales como `{{year}}` y `{{external_id}}` (Nº de póliza por secuencia; si su asignación falla, el correo se envía igual con el valor vacío).
+
+### Templates de Carrefour
+
+| Template | Evento | Paquetes |
+|----------|--------|----------|
+| `welcome-essential.html` / `welcome-premium.html` | `POLICY_CREATED` | Paquetes de cesta |
+| `welcome-card-protection.html` | `POLICY_CREATED` | **Protección de tarjeta** (compra protegida), paquetes PRE (`bfbe4882-9137-4d18-932e-6a0fa730d9f9`) y PRO (`bb6fe15f-5589-4012-9424-e776fcac7b52`); un único template compartido, asunto `tu seguro Protección de tarjetas ya está activo` y adjunto `CondicionesParticulares.pdf` |
+| `cancel-plan.html` | `POLICY_CANCELLED` | Cancelación |
+
+- La configuración de paquetes se agrega con migraciones de **datos** sobre `integrations.config` (p. ej. `20260925202529_carrefour_card_protection_welcome_mail.sql`): ubican el canal por `partner = 'carrefour'` (los uuid de canal cambian entre entornos), son idempotentes (quitan y vuelven a insertar las entradas por `id`) y nunca reescriben la columna entera.
+- Los assets (imágenes, iconos, QR) viven en el bucket `mails` bajo la carpeta del canal y deben subirse por entorno; si faltan, el envío no falla pero el correo llega con imágenes rotas.
+
 ## Notificaciones en la app Next (Discord)
 
 Fuera de Supabase, fallos reintentables o abandonados en el flujo de **emisiones de integración** pueden notificarse a **Discord** vía webhook:
