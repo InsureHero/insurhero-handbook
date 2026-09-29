@@ -87,6 +87,28 @@ Además de los correos operativos (reporte diario por skill), el sistema envía 
 - Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
 - El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
 
+### Selección de template por paquete
+
+La configuración vive en `integrations.config` (fila `slug = 'MAWDY_MAIL'`): canal → evento (p. ej. `POLICY_CREATED`) → `packages[]`. Cada entrada de paquete declara su `id` (package_id), `name`, `subject`, `template` y, opcionalmente, `attachments`. Si el paquete de la orden no tiene entrada, el adapter corta con `PACKAGE_NOT_CONFIGURED`.
+
+- **Asunto**: el adapter antepone el nombre del titular al `subject` del paquete (`"<nombre>, <subject>"`); si no hay nombre, va sin prefijo.
+- **`{{package.name}}`** se resuelve contra la entrada del paquete en el `config`, no contra la tabla `packages`. Por eso varios paquetes pueden compartir un mismo `.html` y diferir solo en los datos de póliza.
+- **`attachments`**: bloque genérico que genera un PDF (p. ej. condiciones particulares) a partir de una plantilla en `bucket_path`, lo cifra con el data path indicado en `password`, lo adjunta con el nombre `rename_to` y lo guarda en `save_to` (bucket `riskItems`) registrándolo en `risk_items.assets`. Si la plantilla no se encuentra o falla la generación, se loguea y **el correo se envía sin adjunto**.
+
+Templates actuales del canal **Carrefour** (`templates/carrefour/`):
+
+| Template | Uso |
+|----------|-----|
+| `welcome-essential.html` / `welcome-premium.html` | Bienvenida de los paquetes de cesta |
+| `welcome-card-protection.html` | Bienvenida de **Protección de tarjeta**; compartido por los paquetes PRE y PRO, con PDF de condiciones particulares adjunto |
+| `cancel-plan.html` | Cancelación |
+
+### Variables universales y URLs de assets
+
+Además del `mapping` (canal + evento + paquete), el adapter expone variables universales: `{{year}}`, `{{external_id}}` (asignado por secuencia cuando algún mapping lo usa o el paquete tiene adjuntos), `{{channel_id}}` (canal del envío) y `{{assets_base_url}}` (`NEXT_PUBLIC_SUPABASE_URL` + `/storage/v1/object/public/mails`).
+
+Las URLs de imágenes deben armarse como `{{assets_base_url}}/{{channel_id}}/...` para que host y carpeta salgan siempre del mismo entorno. `welcome-card-protection.html` ya sigue este patrón (un test impide que contenga `supabase.co` o un uuid de canal). Los templates anteriores de Carrefour (`welcome-essential`, `welcome-premium`, `cancel-plan`) todavía **hardcodean** host (proyecto DEV) y carpeta; migrarlos requiere cambiar ambos a la vez.
+
 ## Notificaciones en la app Next (Discord)
 
 Fuera de Supabase, fallos reintentables o abandonados en el flujo de **emisiones de integración** pueden notificarse a **Discord** vía webhook:
