@@ -89,7 +89,7 @@ Cualquier nueva integración debe **rellenar o transformar hacia** este contrato
 |------|--------|--------|
 | `PHOENIX` | `PhoenixAdapter` | Lee `auth_config` de `integrations` donde `slug = 'PHOENIX'`. |
 | `AMA` | `AmaAdapter` | Lee `auth_config` donde `slug = 'AMA'`; multi-canal vía `auth_config.channels[]` (ver [AMA](../integraciones/ama.md)). |
-| `MAWDY_MAIL` | `MawdyMailAdapter` | Envía **correo transaccional** (p. ej. welcome pack) vía la API de MAWDY con Cognito `client_credentials`. No emite pólizas: renderiza una plantilla con datos del `StandardRiskItem`. Config por canal en `auth_config`. |
+| `MAWDY_MAIL` | `MawdyMailAdapter` | Envía **correo transaccional** (p. ej. welcome pack) vía la API de MAWDY con Cognito `client_credentials`. No emite pólizas: renderiza una plantilla con datos del `StandardRiskItem`. Credenciales en `auth_config`; eventos, paquetes y templates por canal en `config` (ver [Templates de correo al cliente](./notificaciones-skills-supabase.md#templates-de-correo-al-cliente-bienvenida)). |
 
 Añadir **Adapter X / Y** en el diagrama equivale a: implementar `InsuranceAdapter`, registrar en `ADAPTERS` y configurar filas en la tabla **`integrations`** en Supabase.
 
