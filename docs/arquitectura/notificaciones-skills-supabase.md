@@ -87,6 +87,38 @@ Además de los correos operativos (reporte diario por skill), el sistema envía 
 - Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
 - El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
 
+### Configuración por evento y paquete
+
+Qué template se envía lo decide **configuración, no código**: la columna `integrations.config` de la fila `slug = 'MAWDY_MAIL'` declara, por canal, sus eventos (p. ej. `POLICY_CREATED`) y dentro de cada evento un `mapping` de variables y un array `packages[]`. Cada entrada de paquete lleva:
+
+| Clave | Uso |
+|-------|-----|
+| `id` | `package_id` al que aplica la entrada |
+| `name` | Nombre de plan; lo rinde el token `{{package.name}}` |
+| `subject` | Asunto base; el adapter le antepone el nombre del titular (`Nombre, <subject>`). Si no hay nombre, va sin prefijo |
+| `template` | Archivo `.html` dentro de la carpeta del `partner` del canal |
+| `attachments` | Opcional: PDFs a generar y adjuntar (ver abajo) |
+
+Si una orden dispara el evento para un paquete sin entrada en `packages[]`, el adapter devuelve `PACKAGE_NOT_CONFIGURED` (fallo; `dispatch-v2` persiste y reintenta). Como el namespace `package.*` se resuelve contra la entrada de config, **varios paquetes pueden compartir un mismo `.html`** y diferir solo en los datos de póliza.
+
+**Adjuntos (`attachments`).** Cada elemento declara `bucket_path` (plantilla PDF en el bucket `mails`, con placeholder `{channel_id}`), `save_to` (destino, p. ej. `/riskItems/{risk_item_id}/`), `rename_to` (nombre del fichero) y `password` (data path, p. ej. `riskItem.insured_subject.identifier_value`). El adapter rellena las `{etiquetas}` de la plantilla con el `mapping` del canal (datos del risk item y su orden), cifra el PDF con esa contraseña vía el microservicio de PDF, lo sube al destino y lo registra en `risk_items.assets`. Particularidades:
+
+- Si el PDF ya existe en el destino, se **reusa tal cual** (no se regenera): reenviar sobre el mismo risk item no refleja cambios de plantilla o mapping.
+- La plantilla descargada se cachea en memoria del proceso; si se reemplaza en el bucket, hace falta reiniciar el server.
+- Si el adjunto falla (contraseña vacía, plantilla ausente, error del microservicio), se loguea y **el correo se envía sin adjunto**.
+
+### Templates del canal Carrefour
+
+Carpeta `apps/next/src/app/mails/templates/carrefour/`:
+
+| Template | Uso |
+|----------|-----|
+| `welcome-essential.html`, `welcome-premium.html` | Bienvenida de los paquetes de cesta |
+| `welcome-card-protection.html` | Bienvenida de **Protección de tarjeta** (compra protegida), compartido por los paquetes PRE (`bfbe4882-9137-4d18-932e-6a0fa730d9f9`) y PRO (`bb6fe15f-5589-4012-9424-e776fcac7b52`). Asunto `tu seguro Protección de tarjetas ya está activo`; adjunta `CondicionesParticulares.pdf` cifrado con el `identifier_value` del titular |
+| `cancel-plan.html` | Correo de cancelación |
+
+`welcome-card-protection.html` usa solo los tokens `{{name}}`, `{{external_id}}`, `{{package.name}}`, `{{gross_price}}`, `{{riskItem.start_date}}` y `{{year}}`; un test (`welcome-card-protection.test.ts`) fija esa whitelist y verifica que no queden `{{` sin sustituir ni imágenes por `cid:`. Los enlaces (condiciones generales, QR, teléfonos) son constantes del canal fijas en el HTML. Las entradas de paquete se agregan con la migración de datos `20260925202529_carrefour_card_protection_welcome_mail.sql`, que ubica el canal por `partner = 'carrefour'` (no por uuid) y es idempotente.
+
 ## Notificaciones en la app Next (Discord)
 
 Fuera de Supabase, fallos reintentables o abandonados en el flujo de **emisiones de integración** pueden notificarse a **Discord** vía webhook:
