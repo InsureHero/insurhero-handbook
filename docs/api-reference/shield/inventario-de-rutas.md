@@ -21,6 +21,8 @@ Listado **orientado a desarrollo**, agrupado por **dominio**. Las rutas reales i
 |------------------|---------------|
 | `.../risk-items` (lista / creación) | `v1`, `ia/v1`, `ia/v2`, `integrations/v1` |
 | `.../risk-items/[riskItemId]` | `v1`, `ia/v1`, `ia/v2`, `integrations/v1` |
+
+En **`v1`** (`GET .../risk-items`, canal vía `x-channel-id`) e **`integrations/v1`** (`GET .../risk-items`, multi-canal vía `x-webhooks` + `x-insurer-id`), el listado acepta, además de la paginación `from`/`to` y `policyId`, un filtro **opcional** por **rango de fechas de creación** (`start_date`/`end_date`, ambos o ninguno, `start_date <= end_date`, cap de 6 meses; `end_date` incluye el día completo en UTC) y por **`status`** (`ACTIVE`, `INACTIVE`, `PENDING`, `RESCISSION`, `EXPIRED`, `CANCELLED`). Esos listados y el detalle **`v1`** `GET .../risk-items/[riskItemId]` devuelven **`external_id`** (número de póliza externo del carrier, leído de `carrier_external_ids`) solo cuando el risk item tiene uno; si no existe o la lectura falla, la clave se omite y la respuesta no se ve afectada.
 | `.../risk-items/[id]/variants` | `v1`, `ia/v1` |
 | `.../risk-items/[id]/events` | `v1`, `ia/v1` |
 | `.../risk-items/[id]/assets` | `v1`, `ia/v1` |
