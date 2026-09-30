@@ -43,8 +43,24 @@ Con filtro por póliza:
 ```bash
 curl -sS -G "https://TU_DOMINIO/api/shield/v1/risk-items" \
   -H "Authorization: Bearer TU_ACCESS_TOKEN_JWT" \
+  --data-urlencode "from=0" \
+  --data-urlencode "to=50" \
   --data-urlencode "policyId=UUID_POLIZA"
 ```
+
+Con filtro por rango de fechas de creación y estado (`start_date`/`end_date` van juntos, máximo 6 meses; `status` es opcional):
+
+```bash
+curl -sS -G "https://TU_DOMINIO/api/shield/v1/risk-items" \
+  -H "Authorization: Bearer TU_ACCESS_TOKEN_JWT" \
+  --data-urlencode "from=0" \
+  --data-urlencode "to=50" \
+  --data-urlencode "start_date=2026-01-01" \
+  --data-urlencode "end_date=2026-03-31" \
+  --data-urlencode "status=ACTIVE"
+```
+
+Cada item incluye `external_id` (número de póliza externo del carrier) solo si tiene uno asignado; si no, la clave no aparece.
 
 ### Crear risk item (POST)
 
