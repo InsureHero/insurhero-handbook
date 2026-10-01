@@ -62,6 +62,8 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
 
+Los envíos que agotan sus reintentos quedan en `FAILED` sin notificación en tiempo real. Para consultarlos desde fuera de la app existe el endpoint Shield Standard **`GET /api/shield/v1/sftp-failures`** (JWT de canal): reutiliza el RPC `batch_job_groups` —el mismo que alimenta la página Batch Jobs—, que agrupa las filas por `external_id` (nombre del fichero) y cuenta en `failed_attempts` la racha de fallos desde el último `SUCCESS`. Acepta `status` (se pasa tal cual al RPC; p. ej. `failed`) y `direction` (`inbound` / `outbound`; fuera de ese enum → `422`). El endpoint **no aplica umbral**: decidir a partir de cuántos fallos alertar es responsabilidad del consumidor (p. ej. un workflow programado). Un fichero con fallos seguidos de un `SUCCESS` no aparece como `failed`.
+
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
@@ -81,6 +83,7 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 
 - Generación por orden: `apps/next/src/app/api/integrations/carrefour-payments/order/route.ts`
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
+- Consulta de fallos SFTP (Shield): `apps/next/src/app/api/shield/v1/sftp-failures/route.ts`
 - Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
 
