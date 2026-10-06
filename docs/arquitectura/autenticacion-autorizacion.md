@@ -30,6 +30,8 @@ Supabase RLS se utiliza para:
 - Políticas basadas en roles de usuario
 - Seguridad a nivel de base de datos
 
+En Storage, el bucket **`claims`** (adjuntos de reclamos) es público para descarga por URL, pero **no tiene policy de `SELECT`** para `public`: no se puede listar su contenido con la anon key. Se mantiene la policy de `INSERT` (`users can upload and read files 1ckmjef_1`) que usa el dashboard para subir adjuntos. Migración de referencia: `supabase/migrations/20261002045855_drop_claims_bucket_public_select_policy.sql`.
+
 ### Roles y Permisos
 
 El sistema maneja diferentes roles:
