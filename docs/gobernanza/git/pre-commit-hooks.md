@@ -116,11 +116,20 @@ Aplica Prettier sobre todo el código. Correr antes de commitear para evitar que
 
 ### Regenerar tipos de Supabase
 
-Cuando cambias el esquema de BD:
+Cuando una migración cambia el esquema de BD (tablas, columnas, tipos, enums), los tipos se regeneran **desde tu base local**, que se construye aplicando las migraciones del repo:
 
 ```bash
-supabase gen types typescript --project-id  > packages/types/src/types/generated-database.types.ts
+cd apps/next
+yarn supabase:reset      # resetea la base local aplicando todas las migraciones
+yarn gen:db-types-local  # escribe packages/types/src/types/generated-database.types.ts
 ```
+
+`generated-database.types.ts` se commitea en el mismo PR que la migración. Las migraciones que solo mueven datos (sin cambio de esquema) no requieren regenerar.
+
+- **No usar `yarn gen:db-types` para desarrollar**: lee del proyecto DEV remoto, que todavía no tiene tu cambio, y genera tipos sin él sin error visible.
+- **Prohibido editar `generated-database.types.ts` a mano.** Si la base local no levanta, el ticket queda bloqueado en ese punto.
+- No hace falta instalar el CLI de Supabase: todos los scripts (`db:*`, `supabase:*`, `gen:db-types*`) y el CI usan la misma versión fija, `npx --yes supabase@2.91.1`. No invocar `supabase` ni `npx supabase` sin versión.
+- Los helpers `Tables`, `TablesInsert` y `TablesUpdate` se definen en `packages/types/src/types/database.types.ts` sobre `Database` (no dependen de que los emita el CLI) y se importan desde `@insureHero/types`.
 
 Estos tipos alimentan `check-types` — si no se regeneran tras un cambio de esquema, el build local falla.
 

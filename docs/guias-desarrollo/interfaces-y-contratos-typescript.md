@@ -14,7 +14,7 @@ Cómo definir **tipos e interfaces** nuevos sin fragmentar el modelo de dominio:
 | **`packages/types`** | Tipos compartidos entre apps, contratos estables, reexportaciones. Tras cambios: `yarn compile` en el workspace. |
 | **`apps/next/src/types`** (o equivalente) | Tipos **solo del front** o capa de presentación cuando no deben ir al paquete compartido. |
 | **`src/integrations/contracts/`** | Contratos de integración: p. ej. forma del **`InsuranceAdapter`**, payloads hacia/desde adaptadores. No mezclar con tipos de UI. |
-| **Tipos generados (Supabase)** | Entidades y filas de BD; no duplicar a mano si el generador ya los produce. |
+| **Tipos generados (Supabase)** | Entidades y filas de BD; no duplicar a mano si el generador ya los produce. Se regeneran desde la base local con `yarn gen:db-types-local` (en `apps/next`) y se consumen vía `Tables`, `TablesInsert` y `TablesUpdate` desde `@insureHero/types`. |
 
 Regla práctica: si **dos módulos** (por ejemplo `trpc` y una `route.ts`) necesitan el mismo shape de dominio, el tipo **sube** a `packages/types` o al contrato compartido que ya use el core.
 
