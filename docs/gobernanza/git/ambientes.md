@@ -67,15 +67,18 @@ Cada ambiente tiene su propio set de variables configurado en Vercel:
 Los 3 proyectos de Supabase son independientes. Los cambios de esquema se aplican **siempre primero en desarrollo**:
 
 ```bash
-# Apuntar el CLI a develop
-supabase db push --project-ref
+# Apuntar el CLI a develop y aplicar
+yarn db:link:dev
+yarn db:push
 
 # Luego sandbox
-supabase db push --project-ref
+yarn db:link:sandbox
+yarn db:push
 
-# Finalmente main
-supabase db push --project-ref
+# Main (prod) se linkea a mano, a propósito
 ```
+
+Los scripts `db:*` invocan el CLI con la misma versión fija que el CI (`npx --yes supabase@2.91.1`); no usar `supabase` ni `npx supabase` sin versión.
 
 > ⚠️ **Nunca aplicar migraciones directamente en producción.** Siempre pasar primero por develop → sandbox → main.
 

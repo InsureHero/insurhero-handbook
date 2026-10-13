@@ -28,7 +28,7 @@ La referencia **normativa** de las APIs (tablas, autenticación) sigue en **[API
 - Node.js >= 18.17.x
 - Yarn (gestor de paquetes)
 - Git
-- Supabase CLI (opcional, para desarrollo local)
+- Docker (para levantar la base local de Supabase). El CLI de Supabase no hace falta instalarlo: los scripts del repo lo invocan con versión fija (`npx --yes supabase@2.91.1`)
 
 ### Instalación
 
