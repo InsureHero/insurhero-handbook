@@ -36,7 +36,7 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 
 ### 2. Persistencia: `temp_carriers_orders`
 
-Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` → `failed`) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
+Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` / `failed` en el despacho; tras la reconciliación de la respuesta (paso 6), `processed` o `needs_review`) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
 
 Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`), donde se permiten varias filas.
 
@@ -62,6 +62,50 @@ Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remot
 
 Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
 
+### 6. Reconciliación del fichero de respuesta (inbound)
+
+MAPFRE devuelve un **fichero de respuesta** de cobros (`PAYMENTS_DAILY`) con una línea `OK` / `KO` por registro enviado. Una vez descargado al bucket, su reconciliación se dispara con `POST /api/shield/v1/payment-files/inbound` (body `filename`), que responde **`202`** de inmediato y trabaja en background. El trabajo pesado **no** corre en ese background: se reparte en **bloques** que procesa una cola **QStash** con reintentos.
+
+```
+POST /api/shield/v1/payment-files/inbound      ── productor (202)
+   │  parse + match contra temp_carriers_orders (status = sent), una sola vez
+   │  crea inbound_jobs (result.total_batches = N)
+   ▼
+QStash, cola carrefour-inbound-batch  (parallelism: 1, retries: 3)
+   ▼
+POST /api/integrations/carrefour-payments/inbound-batch   ── consumidor, un bloque por mensaje
+   │  reconcilia los pares del bloque
+   ▼
+RPC complete_inbound_batch  ── registra el bloque y cierra el job (completed / partial)
+```
+
+**Productor.** Lee y parsea el fichero y hace el match posicional contra las filas `sent` **una sola vez**. Los grupos cuyo número de líneas no coincide con las filas enviadas se marcan `needs_review` en `temp_carriers_orders` en ese momento; las líneas huérfanas y los errores de parseo solo se registran en log. Los pares resueltos se agrupan por **`risk_item`** y se empaquetan en bloques de hasta `INBOUND_BATCH_SIZE` pares (env, **default 50**), sin partir nunca el grupo de un mismo `risk_item` (un bloque puede superar el tamaño objetivo si un grupo es grande). Crea el `inbound_job` y encola un mensaje por bloque con los pares **ya resueltos** y un `processed_at` común a todo el fichero. Si no hay pares, el job se crea ya cerrado y no se encola nada.
+
+**Consumidor.** Autenticado por **Bearer service-role** (QStash lo reenvía con `Upstash-Forward-Authorization`). Por cada par aplica la lógica de transición de órdenes existente: `OK` → `markOrderAsPaid` (orden `confirmed`), `KO` → `markOrderAsFailed` (orden `failed`, con su cascada al `risk_item`), y pasa la fila de `temp_carriers_orders` a `processed`. Como todos los pares de un `risk_item` viajan en el mismo bloque, los que quedan cubiertos por una cancelación en cascada se saltean. Una excepción en la transición deja la fila en `needs_review` sin cortar el bloque. Luego llama a la RPC de cierre.
+
+- Responde **`200`** si el bloque terminó, aunque haya KO de negocio o `needs_review`.
+- Responde **`500`** solo ante un fallo real (p. ej. error de DB o de la RPC); QStash reintenta el bloque (hasta 3 veces).
+- Es **idempotente**: `processed_at` viaja en el payload y actúa como clave de idempotencia de los `order_events`, así que un reintento sobre un bloque ya aplicado no duplica transiciones.
+
+**Cierre del job (`complete_inbound_batch`).** RPC `SECURITY DEFINER` (solo `service_role`) que bloquea la fila del job, escribe el resultado del bloque en `result.batches[<índice>]` y **recalcula** `completed_batches` como el número de bloques registrados, de modo que una re-entrega del mismo bloque no cuenta dos veces. Cuando `completed_batches` alcanza `total_batches`, cierra el job exactamente una vez.
+
+#### `inbound_jobs`
+
+| `status` | Significado |
+|---|---|
+| `processing` | Bloques encolados, aún no han cerrado todos. Si un bloque agota sus reintentos, el job queda aquí con `completed_batches < total_batches`. |
+| `completed` | Todos los bloques cerraron sin `needs_review`. Los **KO de negocio** (impagos) cuentan como reconciliación exitosa. |
+| `partial` | Cerraron todos los bloques, pero hubo `needs_review` (excepciones de transición o grupos sin match del productor). Un fichero sin pares pero con grupos sin match se crea directamente en `partial`. |
+| `failed` | Lo usa el flujo de reproceso del sweep (ver abajo) cuando la reconciliación lanza un error. |
+
+El `result` JSONB guarda `total_batches`, `completed_batches`, `batches{}` (por bloque: `pairsProcessed`, `okApplied`, `koApplied`, `skippedByCascade`, `needsReview`) y `producer` (`needsReview`, `orphans`, `parseErrors`, `totalLines`). El estado de un job se consulta con `GET /api/shield/v1/payment-files/inbound?job_id=…` (scopeado por `x-channel-id`).
+
+El endpoint aún acepta un `callback_url` opcional, pero en el modelo por bloques **no se invoca**: el cierre ocurre en la RPC.
+
+#### Red de seguridad: sweep
+
+El cron `GET /api/cron/carrefour-inbound-sweep` re-procesa los ficheros del bucket que no tienen un job `completed` (hasta 3 intentos por fichero; a partir de ahí los reporta como atascados). Este re-proceso **no** usa la cola: reconcilia el fichero entero en línea con la misma lógica de transición, y es idempotente porque solo toca filas en `sent`. Hoy el sweep solo considera terminal el estado `completed`, por lo que un job `partial` cuenta como un intento más.
+
 ## Configuración (`auth_config`)
 
 La fila `integrations` correspondiente guarda, por familia, un bloque con:
@@ -82,6 +126,7 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 - Generación por orden: `apps/next/src/app/api/integrations/carrefour-payments/order/route.ts`
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
 - Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
+- Reconciliación del fichero de respuesta: `apps/next/src/integrations/carrefour-payments/inbound/` (productor en `apps/next/src/app/api/shield/v1/payment-files/inbound/route.ts`, consumidor en `apps/next/src/app/api/integrations/carrefour-payments/inbound-batch/route.ts`, sweep en `apps/next/src/app/api/cron/carrefour-inbound-sweep/route.ts`)
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
 
 ## Referencias
