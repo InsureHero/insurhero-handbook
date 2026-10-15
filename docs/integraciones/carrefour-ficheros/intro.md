@@ -32,13 +32,19 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 
 - Carga el **contexto**: `auth_config` de la fila `integrations`, el `risk_item`, la `order` y el **`timezone` del canal**.
 - **Resuelve qué reports aplican** al canal recorriendo `auth_config.<bloque>.channels[]` por `id_channel`.
-- Por cada **slug** aplicable (p. ej. `EIAC_POLIZAS_NP`, `RIC_DAILY`, `PAYMENTS_DAILY`), tras pasar sus **puertas** (es alta / es cancelación / etc.), construye el **`register`** —la línea o el fragmento XML ya formateado— y lo persiste en **`temp_carriers_orders`** con `status = pending`.
+- Por cada **slug** aplicable (p. ej. `EIAC_POLIZAS_NP`, `RIC_DAILY`, `PAYMENTS_DAILY`), tras pasar sus **puertas** (es alta / es cancelación / etc.), construye el **`register`** —la línea o el fragmento XML ya formateado— y lo acumula para persistirlo en **`temp_carriers_orders`** con `status = pending`.
+- Tras recorrer los slugs, escribe todos los registros de la orden en **una sola llamada** a la RPC **`insert_carrier_registers_batch(p_rows jsonb)`**. La RPC devuelve los `(order_id, integration_slug)` realmente insertados; el handler marca cada slug como insertado o, si no volvió, como ya existente (`duplicated: true`).
+- Quedan fuera del batch `OPEN_SYSTEMS_V2`, que va por su RPC propia `insert_open_systems_v2_register`, y el append de la operación RIC sobre un registro existente en un update.
+- Si la RPC batch falla, el error se reporta **una vez** a Sentry (tag `carrefour.batch_failed`, contexto `carrefour_batch_insert` con `pending_count` y los `pending_registers` completos para reinsertarlos a mano) y cada slug del lote queda `ok: false` con reason `batch insert failed: ...`. El request no se corta: responde `200`.
+- El endpoint tiene `maxDuration` de **300 s** en Vercel.
 
 ### 2. Persistencia: `temp_carriers_orders`
 
 Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` → `failed`) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
 
 Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`), donde se permiten varias filas.
+
+La RPC batch usa `ON CONFLICT ... DO NOTHING` con el mismo predicado parcial que ese índice (`uniq_tco_order_slug`), así que reprocesar una orden no duplica registros. Es `SECURITY DEFINER` y solo la puede ejecutar `service_role`. Si se cambia el predicado del índice, hay que cambiar también el de la RPC: si no coinciden, Postgres no encuentra el índice y la inserción batch falla.
 
 ### 3. Consolidación y despacho (cron por canal)
 
@@ -76,6 +82,7 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 - Todo el pipeline está **scopeado por `channel_id`** (la tabla `temp_carriers_orders` lo lleva como FK).
 - El **timezone del canal** gobierna las ventanas de consolidación y las fechas de cierre.
 - Los endpoints de generación y despacho solo aceptan **service-role** (Bearer). `temp_carriers_orders` tiene RLS sin policies: solo el service-role escribe.
+- El procesamiento de ficheros inbound registra cada job en **`inbound_jobs`** con su `channel_id`: el del token cuando se dispara desde Shield (`POST /api/shield/v1/payment-files/inbound`), el del adaptador SFTP, o el canal configurado en `CARREFOUR_PAYMENTS` cuando lo dispara el cron de reintentos y hay un solo canal. `GET /api/shield/v1/payment-files/inbound?job_id=` solo devuelve jobs del canal del token. El `filename` del `POST` solo admite letras, dígitos, `_`, `-`, `.` y `/`, y no puede contener `..`.
 
 ## Dónde está en el repo
 
