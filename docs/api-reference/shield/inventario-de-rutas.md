@@ -66,7 +66,8 @@ Listado **orientado a desarrollo**, agrupado por **dominio**. Las rutas reales i
 
 | Recurso (patrón) | Namespaces |
 |------------------|------------|
-| `.../integrations/webhooks`, `.../webhooks/[webhookId]` | `v1`, `ia/v1` |
+| `.../integrations/webhooks`, `.../webhooks/[webhookId]` (lectura con token de canal/IA o de integraciones; alta y borrado solo con token de integraciones — ver [Autenticación y tokens](./autenticacion-y-tokens)) | `v1`, `ia/v1` |
+| `.../payment-files/inbound` (`POST` encola el procesamiento de un fichero inbound de Carrefour y responde `202`; `GET ?job_id=` consulta el job, solo del canal del token) | `v1` |
 | `.../orders/[riskItemId]` | `integrations/v1` |
 | `.../orders` (listado por **rango de fechas** de creación; `start_date`/`end_date` obligatorios, `status` opcional, paginación `from`/`to`, cap de 6 meses) | `v1` |
 | `.../fenicio/orders`, `.../fenicio/orders/[id]`, `.../fenicio/stocks` (lectura Fenicio, **experimental / dev-only** — ver [Fenicio](../../integraciones/fenicio.md)) | `integrations/v1` |

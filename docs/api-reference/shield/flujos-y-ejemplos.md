@@ -69,6 +69,20 @@ Los campos exactos dependen de `v.riskItem.shield.insert()` en el código.
 | `404` | Recurso no encontrado |
 | `422` | Datos no procesables (`unprocessableContent`) |
 
+## Detalle de errores
+
+Las respuestas de error tienen la forma `{ error, details }`. Lo que lleva `details` depende del origen del error (`utils/http.utils.ts`):
+
+| Origen | `details` |
+|--------|-----------|
+| Validación de entrada (headers, query, body, params) | `ZodError` con sus `issues` |
+| Body que no se puede parsear (JSON inválido, body vacío, multipart inválido) | `ZodError` con un issue en `body` (“Invalid request body”) |
+| Error de base causado por el input: clases `22` y `23`, `PGRST116` (`.single()` sin fila) y los `P0001` de unicidad de los triggers | El error de PostgREST tal cual (`message`, `details`, `hint`, `code`) |
+| Resto de errores de base | `{ code, message: "Internal error", details: null, hint: null, event_id }` |
+| Falla del schema de salida o excepción dentro del handler | `422` con `{ message: "Internal error", event_id }` |
+
+Los errores internos se reportan a **Sentry**; `event_id` es el id de ese evento y sirve para rastrearlo. Las rutas que no usan `api()` (p. ej. `assets` de risk items y claims, beneficiarios) aplican la misma regla. Los `details` de negocio que arma cada ruta (p. ej. “Claim does not exist in this channel”) salen tal cual.
+
 ## Referencias
 
 - [Autenticación y tokens](./autenticacion-y-tokens)
