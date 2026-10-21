@@ -41,6 +41,7 @@ Supabase PostgreSQL con:
 ### APIs
 
 - **tRPC**: API tipada para el dashboard interno (`/api/trpc`)
+- **Tinybird**: réplica analítica de Supabase que alimenta los tableros de negocio; el navegador la consulta directo con un token firmado por el servidor. Ver [Tableros de negocio](../producto/modulo-tableros.md)
 - **REST**: familia **Shield** (`/api/shield/...`) y superficies adicionales (postventa, pagos, webhooks); ver [Superficies REST](../api-reference/rest-superficies.md)
 
 ### Integraciones en código
