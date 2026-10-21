@@ -124,6 +124,15 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Tableros de negocio
+
+| Router | Uso habitual |
+|--------|----------------|
+| `tinybirdDashboard` | **`token`**: firma un JWT efímero de Tinybird acotado a un canal (resuelto por membresía) y a los pipes que el usuario alcanza; **no devuelve datos**, el navegador consulta Tinybird directo. **`layout`** / **`saveLayout`**: leen y guardan la disposición de un tablero (`mine` u `overview`); guardar la Overview responde `FORBIDDEN` si no es SUPER_ADMIN. |
+| `tinybirdSync` | Operación de la sincronización Supabase → Tinybird (corridas, reintentos) |
+
+Detalle funcional en [Tableros de negocio](../producto/modulo-tableros.md).
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
