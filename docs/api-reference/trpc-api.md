@@ -124,6 +124,12 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Tableros de negocio
+
+| Router | Uso habitual |
+|--------|----------------|
+| `tinybirdDashboard` | **No devuelve datos de negocio.** `token` firma un JWT de Tinybird de 15 minutos, acotado a un canal (resuelto por membresía) y a los pipes que el usuario puede leer; el navegador consulta Tinybird directo con ese token. `layout` y `saveLayout` leen y guardan la disposición de un tablero (`mine` en `insights_dashboards`, `overview` en `overview_layouts`; solo un SUPER_ADMIN guarda la Overview). Ver [Tableros de negocio](../producto/modulo-tableros.md). |
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
