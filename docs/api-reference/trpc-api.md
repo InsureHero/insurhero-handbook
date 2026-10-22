@@ -124,9 +124,72 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Analítica y tableros
+
+| Router | Uso habitual |
+|--------|----------------|
+| `tinybirdDashboard` | **Tableros de negocio**: firma el token de Tinybird y lee/guarda la disposición de widgets (ver [Tableros de negocio](#tableros-de-negocio-tinybird)) |
+| `tinybirdSync` | Operación de la sincronización Supabase → Tinybird (corridas manuales, reintentos, conciliación) |
+| `portfolio` | Números de cartera que usan los widgets de la Overview (`portfolio.dashboard`, `portfolio.summary`) |
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
+
+## Tableros de negocio (Tinybird)
+
+La pantalla de inicio y "Mi tablero" son tableros de widgets que leen **Tinybird directo desde el navegador**. El router `tinybirdDashboard` (`apps/next/src/trpc/tinybirdDashboard.router.ts`) **no devuelve datos de negocio**: solo firma un token efímero y guarda qué widgets van y dónde.
+
+### Tableros
+
+| Tablero | Ruta | Quién lo edita | Dónde se guarda |
+|---------|------|----------------|-----------------|
+| `overview` | `/` (Overview) | Solo `SUPER_ADMIN` ("Editar Overview"); el resto lo ve en solo lectura | `overview_layouts`, una fila con `scope = 'global'` |
+| `mine` | `/insights/mine` (Overview > Mi tablero) | Su dueño, siempre | `insights_dashboards`, una fila por `admin_id` + `channel_id` |
+
+- Las pantallas `/analytics/*` redirigen al tablero.
+- Sin nada guardado (o si todo lo guardado ya no existe en el catálogo), cada tablero cae a **su default según los permisos del usuario**: en la Overview, cartera para quien tiene analítica y elementos protegidos para el resto.
+- La categoría de widgets **overview** (tarjetas de cartera, evolución y nuevas órdenes, elementos protegidos) solo existe en la Overview y lee tRPC (`portfolio.dashboard`, `portfolio.summary`, `riskItems.countByFilter`, `riskItems.selectForGraphOptimized`, `orders.count`), no Tinybird.
+- Catálogo, tamaños, defaults y saneo de lo guardado: `apps/next/src/modules/insights/` (`insights.catalog.ts`, `insights.boards.ts`). Componentes: `apps/next/src/components/insights/`.
+
+### Procedimientos
+
+| Procedimiento | Tipo | Input | Qué hace |
+|---------------|------|-------|----------|
+| `token` | query | `{ channelId?: uuid }` | Firma un JWT de Tinybird para **un** canal. Devuelve `token`, `apiUrl`, `channelId`, `pipes` (lo que puede leer), `insurerScoped`, `access`, `overviewEditor`, `expiresAt` y `renewAfter` |
+| `layout` | query | `{ channelId, board }` | Devuelve `{ widgets, isDefault }` del tablero pedido, ya saneado (`normalizeLayout`) |
+| `saveLayout` | mutation | `{ channelId, board, widgets[] }` (máx. 50) | Sanea y guarda. Lista vacía = restablecer al default. En `overview` exige `overviewEditor` (`canWriteBoard`) y registra `updated_by` |
+
+El token dura **15 minutos** y el cliente pide otro un minuto antes de que venza.
+
+### Seguridad del token
+
+Como las consultas no pasan por la app, **el token es toda la seguridad**:
+
+- **Canal por membresía, no por cookie** (`resolveDashboardChannel`): el `channelId` pedido es una solicitud. Si el usuario no pertenece a ese canal → `FORBIDDEN`; si tiene varios y no pidió ninguno → `BAD_REQUEST` (la pantalla pide elegir). `SUPER_ADMIN` puede pedir cualquier canal, pero siempre uno por token.
+- **`fixed_params`**: `channel_id` (y `insurer_id` para aseguradoras) van fijados en el JWT; Tinybird los impone por encima de lo que venga en la URL.
+- **Lista explícita de pipes** (`PIPE_GRANTS` en `utils/tinybirdDashboard.helpers.ts`): un pipe que el token no trae responde 403.
+
+| Permiso | Pipes | Quién lo recibe |
+|---------|-------|-----------------|
+| `sales` | `ins_sales_kpis`, `ins_sales_breakdown`, `ins_sales_by_channel` | Todos con analítica |
+| `recurring` | `ins_rec_base`, `ins_rec_movement`, `ins_rec_cohorts`, `ins_rec_production`, `ins_pay_cycle` | Todos con analítica |
+| `payments` | `ins_pay_rate`, `ins_pay_failures`, `ins_pay_recovery`, `ins_pay_methods` | InsureHero y aseguradora; el partner no |
+| `commissions` | `ins_sales_commissions` | Con `can_view_order_financials`; la aseguradora nunca |
+
+- `SUPER_ADMIN` respeta `can_view_analytics: false`; el partner depende de `can_view_analytics`. La aseguradora recibe ventas, recurrente y pagos acotados a sus pólizas, y sin `insurer_id` asignado no recibe ningún pipe.
+- Sin pipes no hay token: el usuario ve solo los widgets de elementos protegidos de la Overview (tRPC).
+- Los endpoints viven en `tinybird/endpoints/ins_*.pipe` y leen del pipe base no publicado `tinybird/pipes/ins_scope.pipe`, que aplica los filtros de canal, aseguradora, producto y canal de venta. Llamar a `ins_scope` directo da 403.
+
+### Sincronización Supabase → Tinybird
+
+Tinybird es **espejo del Supabase de cada ambiente**: cada corrida (cron `/api/cron/tinybird-sync`, manual, reintento, conciliación) pide a su propio Supabase las tablas de `public` que existen (`resolveSyncedTables`, función `list_tinybird_sync_tables`) y sincroniza esas; una tabla nueva entra sola. Si el ambiente todavía no tiene la función, se usa la lista fija `SYNCED_TABLES` como respaldo.
+
+Configuración en `apps/next/src/utils/tinybirdSync.config.ts`:
+
+- **`NOT_MIRRORED_TABLES`**: tablas que no se espejan aunque existan — las de la propia sincronización (`tinybird_*`), `connection_tokens` y `app_url`.
+- **`SENSITIVE_COLUMNS`**: columnas que nunca viajan, en ningún ambiente (claves de API, credenciales de integraciones y conexiones, OTP, URLs de webhook, cuerpos de `audit_endpoints` y datos personales de `users`). La tabla se sincroniza sin ellas. Una tabla nueva con datos sensibles se agrega acá.
+- Una tabla sin datasource tipado se concilia contra el landing (`supabase_cdc`) y queda marcada como `untyped`.
 
 ## Llamada desde servidor o scripts (avanzado)
 

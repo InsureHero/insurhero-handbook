@@ -61,6 +61,17 @@ Cómo se aplican:
 - **Bypass de super-admin**: un **`SUPER_ADMIN`** salta la comprobación de privilegios (y de canal) — ve y puede todo, sin depender de la lista.
 - Los privilegios del admin en sesión se cargan en el cliente (procedimiento tRPC `agents.selectAgentLoggedIn`) y se asignan desde la gestión de agentes/usuarios.
 
+### Tableros de negocio (token de Tinybird)
+
+Los tableros de la Overview y "Mi tablero" consultan Tinybird directo desde el navegador, así que la autorización vive en un **JWT efímero firmado en el servidor** (`tinybirdDashboard.token`):
+
+- El canal sale de la **membresía** del usuario, nunca de la cookie de canal activo; un `SUPER_ADMIN` puede pedir cualquier canal, pero uno por token.
+- `channel_id` e `insurer_id` (aseguradoras) van como `fixed_params`, que Tinybird impone sobre la URL.
+- El token lista explícitamente los pipes que puede leer según `can_view_analytics`, `can_view_order_financials` y el rol (partner sin detalle de cobranza; aseguradora sin comisiones y acotada a sus pólizas).
+- La disposición de la Overview (`overview_layouts`) la leen todos los autenticados y solo la escribe un `SUPER_ADMIN` (RLS + router); la de "Mi tablero" (`insights_dashboards`) tiene RLS por `auth.uid() = admin_id`.
+
+Detalle de procedimientos y pipes: [tRPC API — Tableros de negocio](../api-reference/trpc-api.md#tableros-de-negocio-tinybird).
+
 ## Middleware
 
 El middleware de Next.js maneja:
