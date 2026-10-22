@@ -24,4 +24,6 @@ Si recién empiezas con la jerarquía canal → cobertura → variante → paque
 
 Para ver cómo esos módulos se enganchan en ventas, postventa y proveedores externos, revisa también [Flujos e integraciones](./flujos-e-integraciones.md). El detalle técnico de workflows frente a skills está en [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md).
 
+**Tableros de negocio** — La pantalla de inicio (**Overview**) es un tablero de widgets de Ventas, Recurrente y Pagos compartido por todos, que solo arma InsureHero; cada usuario tiene además su propio tablero en **Overview > Mi tablero**, editable y guardado por canal. Ambos admiten filtros por producto, canal de venta y aseguradora, rangos (7/30/90 días, YTD, 12 meses, todo o libre) con comparación contra el período anterior, exportación a PDF y un asistente que responde preguntas típicas y arma PDF o Excel. Lo que cada usuario ve depende de su rol y permisos. Detalle técnico: [tRPC API — Tableros de negocio](../api-reference/trpc-api.md#tableros-de-negocio-tinybird).
+
 **Concepto transversal** — El **risk item** es la pieza del core que une catálogo, emisión, pagos y portal del titular: [Risk item](../arquitectura/risk-item.md).
