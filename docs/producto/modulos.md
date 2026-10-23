@@ -20,6 +20,7 @@ Si recién empiezas con la jerarquía canal → cobertura → variante → paque
 | [Usuarios](./modulo-usuarios.md) | Garantiza **quién entra** y **qué puede hacer** (roles, permisos, identidad). |
 | [Canales](./modulo-canales.md) | Separa **contextos de negocio** (país, moneda, marca, administración) por canal. |
 | [Integraciones](./modulo-integraciones.md) | Conecta InsureHero con **aseguradoras, pagos y APIs** sin ensuciar el núcleo. |
+| [Tableros de negocio](./modulo-tableros.md) | Muestra la **analítica** del negocio (ventas, recurrente, pagos) en la Overview compartida y en Mi tablero, sobre Tinybird. |
 | [Workflows y automatización](./modulo-workflows.md) | Orquesta **estados de reclamo**, **comunicación** y **skills** de operación (alertas, reportes) como capa transversal. |
 
 Para ver cómo esos módulos se enganchan en ventas, postventa y proveedores externos, revisa también [Flujos e integraciones](./flujos-e-integraciones.md). El detalle técnico de workflows frente a skills está en [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md).
