@@ -33,6 +33,7 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 - Carga el **contexto**: `auth_config` de la fila `integrations`, el `risk_item`, la `order` y el **`timezone` del canal**.
 - **Resuelve qué reports aplican** al canal recorriendo `auth_config.<bloque>.channels[]` por `id_channel`.
 - Por cada **slug** aplicable (p. ej. `EIAC_POLIZAS_NP`, `RIC_DAILY`, `PAYMENTS_DAILY`), tras pasar sus **puertas** (es alta / es cancelación / etc.), construye el **`register`** —la línea o el fragmento XML ya formateado— y lo persiste en **`temp_carriers_orders`** con `status = pending`.
+- En la **primera cuota** dispara además, sin esperar el resultado, el **alta en AMA** (`tryEmitAmaForFirstInstallment`, en `order/ama-first-installment.ts`). Como este endpoint también recibe las **anulaciones**, el alta se omite si el risk item está **cancelado** o si ya tiene en `integration_emissions` una emisión AMA `SUCCESS` con un evento distinto de `CANCEL`. Así una anulación no vuelve a dar de alta el risk item en AMA.
 
 ### 2. Persistencia: `temp_carriers_orders`
 

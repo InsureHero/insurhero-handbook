@@ -23,6 +23,8 @@ Emisión, recibos y anulación de pólizas en XML.
 | `EIAC_RECIBOS_NP` | Emisión de **recibo** nuevo. |
 | `EIAC_RECIBOS_MO` | **Movimiento** de recibo (confirmación, anulación). Admite varias filas por orden. |
 
+**`EIAC_POLIZAS_CA` ante una anulación.** La fila de la CA se crea al emitir y el índice único `(order_id, integration_slug)` impediría agregar otra. Por eso, cuando llega la actualización de un risk item **cancelado**, el handler **reescribe el `register` de la fila `pending`** de esa orden con la situación actual (AN, con `DatosAnulacion`). Si la fila ya está `sent`, no se toca.
+
 Los diarios (`EIAC_POLIZAS_NP`, `EIAC_POLIZAS_AN`, `EIAC_RECIBOS_NP`) se consolidan por **ventana de 24 h** en el timezone del canal. La cabecera XML lleva una `clase` configurada en el report.
 
 ## RIC (ancho fijo, estándar MAPFRE)

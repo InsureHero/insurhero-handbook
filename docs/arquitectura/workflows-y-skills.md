@@ -81,6 +81,39 @@ Cada `flow_run` registra la `flow_version` que ejecutó, para poder reconstruir 
 
 El runner **camina el DAG** desde el trigger: `condition` elige la arista de salida, `delay` re-encola. Reintentos best-effort vía QStash. Cada run deja un **trace** (`flow_runs`); los runs `failed` / `partial` se ven en **Failed Messages** (DLQ) con enlace al trace y acción de reintento.
 
+Si un nodo `http`, `webhook` o `sftp` usa una conexión que necesita un secreto y no lo tiene (p. ej. una conexión creada por una importación y todavía sin completar), el nodo falla con el código `connection_missing_credentials` y un mensaje que dice que la conexión no tiene credenciales.
+
+#### Pantalla de ejecuciones (`/flows/runs`)
+
+Lista las ejecuciones del canal (botón **“Ejecuciones”** del listado de flujos), de la más reciente a la más antigua, de a 20 por página, con dos vistas: **“Todas las ejecuciones”** y **“Envíos fallidos”**. Esta última (con un tooltip que la distingue del estado *Fallido*) muestra las ejecuciones disparadas por un evento que agotaron sus intentos y siguen sin reintentar ni descartar; *Fallido* es cualquier ejecución que terminó con error.
+
+- **Filtros**: flujo (todos los del canal, incluidos inactivos y borradores, en orden alfabético), estado (*OK*, *Parcial*, *Fallido*, *En curso*) y rango **desde / hasta** de la hora de inicio, con fecha y hora:minuto en 24 h. Se aplican al cambiar, se combinan entre sí y con la vista, y vuelven la lista a la página 1. Con algún filtro activo aparece **“Limpiar filtros”**.
+- El rango se interpreta **siempre en UTC** y ambos extremos incluyen el minuto elegido. Si el “desde” es posterior al “hasta”, se muestra un aviso y no se consulta.
+- Los filtros y la vista viven en la **URL** (`flow`, `status`, `from`, `to`, `view`), así que se mantienen al recargar y se pueden compartir; la página actual no. Un valor inválido en la URL se ignora. **“Ver ejecuciones”** en el menú de un flujo abre `/flows/runs?flow=<id>`.
+- Los filtros se aplican en la base, siempre dentro del canal. El resumen muestra *“N ejecuciones · página X de Y”* sobre el resultado filtrado.
+- Todas las horas de la pantalla (columna **“Inicio (UTC)”**, título del modal de traza y horas dentro de los errores) se muestran en **UTC, formato 24 h**.
+
+Ve la pantalla quien tiene acceso a workflows; reintentar y descartar envíos fallidos es solo para SUPER_ADMIN.
+
+### Exportar e importar entre canales y ambientes
+
+Hay dos formatos de archivo:
+
+- **Flujo individual** — se exporta desde el menú de cada flujo en el listado. Lleva la versión publicada, su trigger y su definición; las conexiones, subflujos y plantillas de correo viajan **solo por nombre** y se resuelven por nombre en el destino (sin distinguir mayúsculas ni espacios en los extremos). Si una referencia falta o su nombre está **repetido** en el destino, la vista previa lo muestra y la importación se bloquea.
+- **Paquete** (`insurehero.flow-package`) — botón **“Exportar”** del listado de flujos (`/flows/export`). Agrupa workflows, conexiones y plantillas de correo de un canal, **sin credenciales**, más el origen (ambiente, canal, fecha y quién exportó) y la lista de credenciales quitadas.
+
+**Exportar un paquete.** La pantalla lista los elementos del canal con casillas y “Seleccionar todo”. Un workflow sin versión publicada, o que usa algo que ya no existe en el canal, aparece deshabilitado con el motivo. Seleccionar un workflow suma sus dependencias (conexiones, subflujos y plantillas, a cualquier profundidad); el usuario puede quitarlas, y lo no incluido queda en el paquete solo por nombre. Antes de descargar, una vista previa muestra lo incluido, las credenciales que se van a quitar y los campos que no se pudieron revisar campo por campo.
+
+**Credenciales.** El secreto cifrado de una conexión nunca se exporta. En la configuración de los nodos y en las cabeceras, parámetros y URL de las conexiones, todo valor que parezca una credencial —por el nombre del campo o por su forma (JWT, token opaco), con el mismo criterio que usa el motor al ocultar datos en las trazas— se reemplaza por un **marcador** (`[[credential required: complete it in the target environment]]`). Un valor con una referencia a variable (`{{...}}`) no se toca. Los bodies escritos como JSON o formulario se revisan campo por campo; la contraseña de una URL `usuario:contraseña@host` también se reemplaza.
+
+**Importar.** La misma pantalla de importación acepta el paquete (solo **SUPER_ADMIN**). La vista previa indica para cada elemento si **se crea**, **se actualiza**, **queda sin cambios**, **se usa el existente**, o no se importa por **conflicto** o **referencia faltante**, y avisa de contenido distinto, triggers distintos, datasets faltantes y que los subflujos importados deben publicarse antes que los flujos que los usan.
+
+- Se aplican primero conexiones y plantillas, después workflows.
+- Conexión nueva: se crea sin credenciales. Conexión o plantilla con el mismo nombre (y, en conexiones, el mismo tipo) en el destino: se usa la existente sin modificarla.
+- Workflow nuevo: se crea en **borrador** junto con su trigger; si el trigger no se puede crear, el workflow tampoco. Workflow ya importado del mismo origen: se actualiza su borrador y, si no tiene trigger, se le crea (uno existente no se cambia).
+- Un workflow no se importa (ni los que dependen de él) si usa algo que falta, si un nombre está repetido en el destino o en el paquete, si una conexión tiene el mismo nombre y otro tipo, si nunca se importó y su nombre ya existe en el destino, o si su slug de trigger por API ya lo usa otro workflow del canal.
+- Un error en un elemento no detiene al resto; al terminar se ve cada elemento como aplicado, fallido u omitido. Reimportar no duplica nada, completa lo pendiente y **conserva** los valores que el usuario ya completó en lugar de un marcador.
+
 > Referencia de código: `src/workflows/engine/v4/**` (motor), `src/app/api/workflows/v4/**` (drain, cron-trigger), `src/components/flows/**` (builder). Todo bajo el paraguas SCRUM-151.
 
 ## Skills y tRPC

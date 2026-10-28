@@ -124,6 +124,16 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Workflows v4 (builder de flujos)
+
+| Router | Uso habitual |
+|--------|----------------|
+| `flowRuns` | Pantalla de ejecuciones: `selectByChannel` (paginado, con filtros opcionales `flow_id`, `status` —`ok` / `partial` / `failed` / `running`—, `started_from` y `started_before` en ISO, y `failed_sends`), `flowOptions` (flujos del canal para el selector), `retrySend` / `dismissSend` (solo SUPER_ADMIN) |
+| `flowTransfer` | Exportar / importar **un** flujo (`exportBundle`, `previewImport`, `importBundle`) |
+| `flowPackage` | Exportar / importar un **paquete** de workflows, conexiones y plantillas: `exportCandidates` y `exportPackage` (usuario con acceso al canal), `previewPackage` e `importPackage` (solo SUPER_ADMIN) |
+
+Detalle funcional en [Workflows, automatización y skills](../arquitectura/workflows-y-skills.md).
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
