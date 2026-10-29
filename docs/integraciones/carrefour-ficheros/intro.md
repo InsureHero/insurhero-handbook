@@ -33,6 +33,16 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 - Carga el **contexto**: `auth_config` de la fila `integrations`, el `risk_item`, la `order` y el **`timezone` del canal**.
 - **Resuelve qué reports aplican** al canal recorriendo `auth_config.<bloque>.channels[]` por `id_channel`.
 - Por cada **slug** aplicable (p. ej. `EIAC_POLIZAS_NP`, `RIC_DAILY`, `PAYMENTS_DAILY`), tras pasar sus **puertas** (es alta / es cancelación / etc.), construye el **`register`** —la línea o el fragmento XML ya formateado— y lo persiste en **`temp_carriers_orders`** con `status = pending`.
+- En la **primera cuota**, dispara además la emisión en **AMA** (vía `/api/integrations/post-sales`), salvo que el risk item esté **cancelado** o ya tenga una emisión AMA exitosa que no sea `CANCEL`.
+
+#### Cambios posteriores: `update: true`
+
+El mismo endpoint recibe los cambios de estado con `update: true`:
+
+- **`dispatch_file_registers_on_order_update`** (`AFTER UPDATE ON orders`) — cambios en la orden.
+- **`dispatch_file_registers_on_risk_item_cancellation`** (`AFTER UPDATE ON risk_items`, cuando el `status` pasa a cancelado) — cubre la anulación por `PATCH /api/shield/v1/risk-items/{id}/cancel`, que cancela el risk item **sin tocar la orden** (la orden queda `emitted` o `confirmed`).
+
+Por eso, en las puertas de baja, un **risk item cancelado cuenta como anulación** aunque la orden siga emitida o cobrada (detalle por slug en [Familias de ficheros](./familias.md), sección «Anulación de un risk item sin cancelar la orden»).
 
 ### 2. Persistencia: `temp_carriers_orders`
 
