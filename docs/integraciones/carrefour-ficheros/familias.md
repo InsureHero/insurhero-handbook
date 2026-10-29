@@ -37,7 +37,7 @@ Registro de información de clientes, pólizas, intervinientes y contactos.
 | `RIC_MONTHLY_INTERVINIENTES` | Consolidado mensual de intervinientes. |
 | `RIC_MONTHLY_CONTACTOS` | Consolidado mensual de contactos. |
 
-Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`), derivada del estado de la orden.
+Cada registro indica su **operación**: alta (`01`), modificación (`02`) o baja (`03`). Es baja (póliza `AN`) si la orden está cancelada **o** el risk item está cancelado; RIC informa la póliza, no el recibo.
 
 ## OPEN_SYSTEMS / OPEN_SYSTEMS_V2 (SSAA — sistemas abiertos)
 
@@ -62,6 +62,19 @@ Se generan en alta (creación) y en cancelación; no en modificaciones que no se
 ## PAYMENTS_DAILY (delimitado por `;`)
 
 Movimientos de **pago** diarios. Cada línea lleva el tipo y valor del identificador del asegurado, el producto, el **signo** (`+` / `-`) y el **importe** de la orden.
+
+## Anulación de un risk item sin cancelar la orden
+
+`PATCH /api/shield/v1/risk-items/{id}/cancel` cancela el risk item pero deja la orden como estaba (`emitted` o `confirmed`). El trigger de cancelación de risk item llama a la generación con `update: true` y cada familia lo trata así:
+
+| Slug | Comportamiento |
+|------|----------------|
+| `EIAC_POLIZAS_AN` | Fila de anulación de póliza. |
+| `EIAC_POLIZAS_CA` | La fila de la orden ya existe desde la emisión: si sigue `pending`, se **reescribe** su `register` con la situación AN y `DatosAnulacion`; si no hay pendiente, se inserta. Una fila ya `sent` no se toca. |
+| `EIAC_RECIBOS_MO` | Una orden `emitted` de un risk item cancelado cuenta como **anulada**: sale el recibo con situación y movimiento AN. Una orden `confirmed` (cobrada) sigue informándose como cobrada. |
+| `RIC_DAILY` | Se agrega la **baja** (operación `03`, póliza `AN`), con la orden emitida o cobrada. |
+| `MIC_OPE_DAILY` / `MIC_ITC_DAILY` | Con `update: true` solo se procesan si el risk item está cancelado. |
+| AMA | No se re-emite: la emisión de primera cuota se salta para un risk item cancelado. |
 
 ## Referencias
 
