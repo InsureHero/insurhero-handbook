@@ -38,7 +38,9 @@ Un **trigger `AFTER INSERT ON orders`** publica (vía `net.http_post`, post-comm
 
 Es la tabla de trabajo entre la generación y el despacho. Guarda el `register` ya listo por `(order_id, integration_slug)`, su `status` (`pending` → `sent` → `failed`) y una columna `date` en **wall-clock del timezone del canal** (no UTC), que el despacho usa para las ventanas diarias.
 
-Un índice único `(order_id, integration_slug)` evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`), donde se permiten varias filas.
+Un índice único `(order_id, integration_slug)` (`uniq_tco_order_slug`) evita duplicados, **salvo** para los slugs que representan varios movimientos sobre la misma orden (`EIAC_RECIBOS_MO`, `OPEN_SYSTEMS`, `OPEN_SYSTEMS_V2`, `MIC_OPE_DAILY`), donde se permiten varias filas. Las filas se insertan con la RPC `insert_carrier_registers_batch`, cuyo `ON CONFLICT ... DO NOTHING` usa **el mismo predicado** que el índice (misma lista de slugs exentos): si se agrega un slug exento al índice, hay que actualizar la RPC en la misma migración o Postgres deja de inferir el arbiter y falla todo el batch.
+
+En `MIC_OPE_DAILY` el alta y la baja comparten slug y se distinguen por el `tipo_suplemento` (campo 8 del `register`). Como el índice no lo deduplica, el handler aplica un **guard en la app** antes de insertar: si ya existe una fila `MIC_OPE_DAILY` para la **misma orden** con el **mismo** `tipo_suplemento`, la saltea y reporta `duplicated: true`. El guard es read-then-write (no atómico): dos disparos concurrentes sobre la misma orden podrían insertar dos filas del mismo tipo.
 
 ### 3. Consolidación y despacho (cron por canal)
 
