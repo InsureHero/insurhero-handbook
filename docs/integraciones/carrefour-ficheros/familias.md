@@ -59,6 +59,8 @@ La fecha de cierre se resuelve según la periodicidad del report (`monthly` + `s
 
 Se generan en alta (creación) y en cancelación; no en modificaciones que no sean baja.
 
+En OPE el movimiento va en el campo `tipo_suplemento` del registro: `1` alta, `2` anulación (cuando el risk item queda cancelado) y `3` movimiento posterior (el risk item ya salió en un fichero MIC por otra orden, p. ej. una cuota siguiente). Alta y anulación de la misma orden conviven como dos filas `MIC_OPE_DAILY`; un reproceso del mismo tipo sobre la misma orden no genera una fila nueva (ver la sección de persistencia en [Pipeline y despacho](./intro.md)).
+
 ## PAYMENTS_DAILY (delimitado por `;`)
 
 Movimientos de **pago** diarios. Cada línea lleva el tipo y valor del identificador del asegurado, el producto, el **signo** (`+` / `-`) y el **importe** de la orden.

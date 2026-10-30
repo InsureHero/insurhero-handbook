@@ -283,6 +283,20 @@ Define los campos requeridos para presentar un reclamo.
 }
 ```
 
+En Shield, los datos de un reclamo que se validan contra `claim_schema` van en `incident.additional_properties`.
+
+#### Validación de los esquemas y "Generar ejemplo"
+
+Shield (alta de risk items y de claims), tRPC y el modal de ejemplo del dashboard usan **el mismo validador** (`apps/next/src/utils/schemaValidation.utils.ts`), así que un payload que pasa **Verificar ejemplo** en el dashboard es aceptado por la API:
+
+| `type` | Qué valida |
+|--------|------------|
+| `string`, `number`, `boolean`, `object`, `array` | El tipo correspondiente (con sus restricciones) |
+| `date` | Texto en formato `YYYY-MM-DD`; otro formato falla con `Must be a date in YYYY-MM-DD format` |
+| Otro tipo (p. ej. `integer`, `text`) | Acepta cualquier valor |
+
+En el modal de ejemplo de risk items y de claims, **Generar ejemplo** arma un JSON a partir del esquema: los campos `date` reciben `1990-05-14`, los `integer` un entero dentro de `minimum` / `maximum`, y los campos con `options` su primera opción. En claims, los campos de `claim_schema` se generan dentro de `incident.additional_properties`. Si el esquema tiene un tipo que el generador no conoce (o un `object` sin `properties` / `array` sin `items`), se muestra un toast de error y el editor conserva su contenido.
+
 ### Ejemplo Real Completo
 
 ```json
