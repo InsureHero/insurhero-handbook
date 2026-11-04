@@ -426,6 +426,29 @@ Define cómo se factura el paquete:
 - Variante "Seguro de Robo" (`variant_id: d4e5f6a7...`)
 - Variante "Responsabilidad Civil" (`variant_id: e5f6a7b8...`)
 
+### Listado de paquetes en el dashboard
+
+La pantalla `/packages` lista, de a 25 por página, **solo los paquetes del canal activo** (también cuando el canal activo es InsureHero). Las columnas son:
+
+| Columna | Qué muestra |
+|---------|-------------|
+| ID | Abre el modal con el detalle del paquete |
+| Nombre | `name` del paquete |
+| Frecuencia | `pricing_rules.pricing_type`: "Único" (`one_time`) o "Recurrente" (`recurring`); "-" si falta o tiene otro valor |
+| Prima sin impuestos | Suma de los netos de las variantes del paquete |
+| Impuestos | Suma de los impuestos de las variantes |
+| Prima con impuestos | Suma de los precios con impuestos de las variantes |
+| Acciones | Menú de acciones del paquete |
+
+Cómo se calculan los montos:
+
+- Cada variante se cotiza con **la misma regla que las órdenes** (`computeOrderPricing`), sin markups: si tiene `net_price`, el precio con impuestos es neto + impuestos; si no, `gross_price` es el precio con impuestos y el neto sale de restarle los impuestos. Una variante sin impuestos aporta 0 de impuestos.
+- Las variantes o relaciones paquete–variante con `deleted_at` no suman.
+- Se muestran con 2 decimales y la moneda del canal; cada monto se redondea por separado, así que neto + impuestos puede diferir del total en 0,01.
+- Si alguna variante activa tiene el precio como **expresión** (p. ej. `0.0909*total_reservation_value`), las tres columnas muestran "-" con el tooltip "El precio depende de los datos de la orden". Un paquete sin variantes muestra "-" sin tooltip.
+
+**Filtro por producto:** sobre la tabla hay un selector con todos los productos activos del canal (identificados por `code`, en orden alfabético, tengan o no paquetes) más la opción "Todos". Al elegir uno, la tabla deja solo los paquetes incluidos en ese producto vía `products_packages` (ignorando relaciones y productos borrados); el filtrado y el total de la paginación se resuelven en la base de datos. El producto elegido queda en la URL (parámetro `product`, junto con la página), el cambio vuelve a la página 1 y, si el producto no tiene paquetes o no pertenece al canal, se muestra "No hay resultados con este filtro". Si falla la carga de productos, la tabla se muestra sin filtro.
+
 ---
 
 ## Paso 4: Crear un Producto (Product) 🟣
