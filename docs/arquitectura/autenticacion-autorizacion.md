@@ -59,6 +59,7 @@ Cómo se aplican:
 - **Visibilidad de páginas**: un mapa privilegio→página (`pageAccessMap`) decide qué secciones del dashboard ve el admin; las que no tiene habilitadas se ocultan.
 - **Acciones puntuales**: privilegios específicos gatean operaciones concretas. Por ejemplo, **`can_download_risk_items`** habilita la **exportación / descarga de risk items** en el backoffice.
 - **Bypass de super-admin**: un **`SUPER_ADMIN`** salta la comprobación de privilegios (y de canal) — ve y puede todo, sin depender de la lista.
+- **Tableros de negocio**: los mismos permisos de canal (analítica, permiso financiero) deciden qué pipes de Tinybird incluye el token del tablero; ver [Tableros de negocio](./tableros-de-negocio.md#seguridad-el-token-es-toda-la-seguridad).
 - Los privilegios del admin en sesión se cargan en el cliente (procedimiento tRPC `agents.selectAgentLoggedIn`) y se asignan desde la gestión de agentes/usuarios.
 
 ## Middleware
