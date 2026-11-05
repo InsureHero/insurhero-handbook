@@ -124,9 +124,57 @@ Los nombres coinciden con `trpc.<router>.<procedimiento>`. Lista completa en el 
 | `integrationEmissions` | **Emisiones externas**, reintentos, sync |
 | `integration` | Operaciones de integración según implementación |
 
+### Tableros de negocio
+
+| Router | Uso habitual |
+|--------|----------------|
+| `tinybirdDashboard` | Token de lectura de Tinybird y disposición de los tableros (Overview y Mi tablero). Ver [Tableros de negocio (Tinybird)](#tableros-de-negocio-tinybird). |
+
 ### Otros
 
 `claims`, `workflows`, `skills`, `users`, `admins`, `emailTemplates`, etc. — ver tabla extendida en versiones anteriores del repo o en `index.ts`.
+
+## Tableros de negocio (Tinybird)
+
+La pantalla de inicio (**Overview**, `/`) y **Overview → Mi tablero** (`/insights/mine`) son tableros de widgets que leen **Tinybird**, no Supabase. Las antiguas pantallas `/analytics/*` redirigen a Mi tablero.
+
+| Tablero | Disposición guardada en | Quién la edita |
+|---------|-------------------------|----------------|
+| `overview` (Overview) | `overview_layouts`, una sola fila con `scope = 'global'` (compartida por todos) | Solo **SUPER_ADMIN**; el resto la ve en solo lectura. RLS: lectura para cualquier autenticado, escritura solo SUPER_ADMIN |
+| `mine` (Mi tablero) | `insights_dashboards`, una fila por `admin_id` + `channel_id` | Su dueño (RLS por `admin_id`) |
+
+Sin disposición guardada (o si nada de lo guardado sigue existiendo en el catálogo), cada tablero usa su **layout por defecto** según los permisos del usuario. El catálogo de widgets, sus tamaños y los defaults viven en `src/modules/insights/` (`insights.catalog.ts`, `insights.boards.ts`); los componentes en `src/components/insights/`.
+
+### Tinybird directo desde el navegador
+
+El router **no devuelve datos**: firma un **token efímero** (JWT) y el navegador consulta los endpoints de Tinybird directamente. Por eso el token es toda la seguridad:
+
+- **Canal por membresía**, no por cookie ni input: `resolveDashboardChannel` concede el canal pedido solo si hay membresía (SUPER_ADMIN puede pedir cualquiera). Sin canal pedido y con varios canales, no se adivina: hay que elegir.
+- **`fixed_params`**: `channel_id` (y `insurer_id` para aseguradoras) quedan fijados en el token; Tinybird los impone por encima de lo que venga en la URL.
+- **Lista explícita de pipes** según permisos (`PIPE_GRANTS` en `utils/tinybirdDashboard.helpers.ts`). El cliente solo ofrece los widgets que el token puede cargar.
+- Duración: 15 minutos (`DASHBOARD_TOKEN_TTL_SECONDS`); el cliente lo renueva un minuto antes de vencer.
+
+| Permiso | Pipes | Quién lo recibe |
+|---------|-------|-----------------|
+| `sales` | `ins_sales_kpis`, `ins_sales_breakdown`, `ins_sales_by_channel`, `ins_ov_portfolio_totals`, `ins_ov_portfolio_months`, `ins_ov_portfolio_series` | Con analítica (`can_view_analytics`); aseguradora siempre |
+| `recurring` | `ins_rec_base`, `ins_rec_movement`, `ins_rec_cohorts`, `ins_rec_production`, `ins_pay_cycle` | Igual que `sales` |
+| `payments` | `ins_pay_rate`, `ins_pay_failures`, `ins_pay_recovery`, `ins_pay_methods` | SUPER_ADMIN con analítica y aseguradora; el partner no |
+| `commissions` | `ins_sales_commissions`, `ins_ov_portfolio_financials`, `ins_ov_premium_breakdown` | Con analítica y permiso financiero (`can_view_order_financials`); la aseguradora nunca |
+| `overview` | `ins_ov_risk_items_totals`, `ins_ov_risk_items_months`, `ins_ov_risk_items_series` | Todo usuario del canal, tenga o no analítica |
+
+Un token de **aseguradora** solo incluye los pipes que filtran por `insurer_id`, y una aseguradora sin `insurer_id` asignado no recibe ningún pipe. Los endpoints viven en `tinybird/endpoints/ins_*.pipe` y leen de un pipe base no publicado, `tinybird/pipes/ins_scope.pipe`, que concentra los filtros de canal, aseguradora, producto, canal de venta y origen de contratación.
+
+:::warning Despliegue
+Los pipes nuevos deben estar desplegados en el Tinybird de cada ambiente **antes** que el front: el token los nombra en sus scopes y, si faltan, esos widgets fallan.
+:::
+
+### Procedimientos de `tinybirdDashboard`
+
+| Procedimiento | Tipo | Qué hace |
+|---------------|------|----------|
+| `token` | query | Input opcional `{ channelId }`. Devuelve `token`, `apiUrl`, `channelId`, `pipes`, `insurerScoped`, `access`, `overviewEditor`, `expiresAt` y `renewAfter`. `FORBIDDEN` si no hay membresía; `BAD_REQUEST` si falta elegir canal |
+| `layout` | query | `{ channelId, board }` (`board`: `mine` u `overview`). Devuelve `{ widgets, isDefault }`, ya saneado con `normalizeLayout` |
+| `saveLayout` | mutation | `{ channelId, board, widgets }` (máx. 50 widgets con `id`, `x`, `y`, `w`, `h`). Sanea antes de escribir; lista vacía = restablecer. Guardar la Overview sin ser SUPER_ADMIN responde `FORBIDDEN` (`canWriteBoard`) |
 
 ## Llamada desde servidor o scripts (avanzado)
 
