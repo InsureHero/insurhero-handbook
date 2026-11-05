@@ -51,6 +51,8 @@ Para **workflows de reclamos**, rutas `/api/workflows`, webhooks y la relación 
 
 El **risk item** es el objeto operativo central del core (emisión, postventa, integraciones): [Risk item](./risk-item.md).
 
+La **analítica** del dashboard (Overview en `/` y Mi tablero) son tableros de widgets que leen **Tinybird**, alimentado por CDC desde Supabase: [Tableros de negocio](./tableros-de-negocio.md).
+
 ## Estructura de Datos
 
 ### Estructura Jerárquica de Productos
