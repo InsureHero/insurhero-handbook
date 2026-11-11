@@ -21,7 +21,7 @@ Emisión, recibos y anulación de pólizas en XML.
 | `EIAC_POLIZAS_AN` | **Anulación** de póliza (cuando el risk item queda cancelado). |
 | `EIAC_POLIZAS_CA` | **Cambio** sobre la póliza. |
 | `EIAC_RECIBOS_NP` | Emisión de **recibo** nuevo. |
-| `EIAC_RECIBOS_MO` | **Movimiento** de recibo (confirmación, anulación). Admite varias filas por orden. |
+| `EIAC_RECIBOS_MO` | **Movimiento** de recibo (confirmación, anulación, devolución `DE` cuando la orden pasa a `returned`). Admite varias filas por orden. |
 
 Los diarios (`EIAC_POLIZAS_NP`, `EIAC_POLIZAS_AN`, `EIAC_RECIBOS_NP`) se consolidan por **ventana de 24 h** en el timezone del canal. La cabecera XML lleva una `clase` configurada en el report.
 
@@ -48,6 +48,8 @@ Fichero **mensual** de movimientos de póliza/recibo para el sistema de "sistema
 | `OPEN_SYSTEMS` | Layout base de movimientos mensuales. |
 | `OPEN_SYSTEMS_V2` | Layout revisado (tipo de registro emisión/renovación y fechas de creación / anulación / cobro). Admite varias filas por orden. |
 
+En `OPEN_SYSTEMS`, una orden en `returned` (devolución confirmada) genera el movimiento `DBR`; una cobertura cancelada, `ANU`.
+
 La fecha de cierre se resuelve según la periodicidad del report (`monthly` + `schedule_day` + `skip_weekends`).
 
 ## MIC (ancho fijo)
@@ -62,6 +64,8 @@ Se generan en alta (creación) y en cancelación; no en modificaciones que no se
 ## PAYMENTS_DAILY (delimitado por `;`)
 
 Movimientos de **pago** diarios. Cada línea lleva el tipo y valor del identificador del asegurado, el producto, el **signo** (`+` / `-`) y el **importe** de la orden.
+
+La línea de cobro sale con `+`. Al cancelar una orden cobrada dentro del periodo de desistimiento se agrega una segunda línea con `-` (devolución); una orden admite como máximo una de cada signo. Ver [Baja dentro del periodo de desistimiento](./intro.md#baja-dentro-del-periodo-de-desistimiento).
 
 ## Referencias
 
