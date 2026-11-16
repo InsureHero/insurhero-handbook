@@ -46,6 +46,30 @@ curl -sS -G "https://TU_DOMINIO/api/shield/v1/risk-items" \
   --data-urlencode "policyId=UUID_POLIZA"
 ```
 
+### Detalle de un risk item (GET)
+
+`GET /api/shield/v1/risk-items/[riskItemId]` acepta el query param opcional **`searchBy`** para indicar qué representa el segmento de la ruta:
+
+| `searchBy` | Busca por |
+|------------|-----------|
+| `id` (default) | `id` del risk item |
+| `uid` | `uid` del risk item |
+| `external_id` | Número externo del risk item (el que circula hacia carriers y TPAs, p. ej. el *IdIssuer* de DYS), tomado de `carrier_external_ids` |
+
+```bash
+curl -sS -G "https://TU_DOMINIO/api/shield/v1/risk-items/000006163" \
+  -H "Authorization: Bearer TU_ACCESS_TOKEN_JWT" \
+  --data-urlencode "searchBy=external_id"
+```
+
+Con `searchBy=external_id`:
+
+- El número se normaliza antes de buscar: se recortan espacios y se quitan ceros a la izquierda, así que `6163`, `000006163` o el mismo número relleno a 25 dígitos encuentran el mismo risk item. Un valor no numérico, vacío o fuera del rango BIGINT responde `422`.
+- La búsqueda siempre se limita al canal del token (`x-channel-id`): un número inexistente, de otro canal o de un risk item que todavía no tiene número asignado responde `404 Risk item not found`.
+- La respuesta es la misma que la búsqueda por `id` (incluye `external_id`) y devuelve el risk item **en cualquier estado** (`ACTIVE`, `CANCELLED`, `EXPIRED`, etc.); el consumidor decide según `status`.
+
+Este valor de `searchBy` solo existe en el detalle de `v1`: los detalles de `ia/*` e `integrations/v1`, y `.../risk-items/[id]/variants`, aceptan únicamente `id` y `uid`.
+
 ### Crear risk item (POST)
 
 ```bash
