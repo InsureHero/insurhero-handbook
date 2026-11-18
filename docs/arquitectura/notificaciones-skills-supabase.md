@@ -86,6 +86,7 @@ Además de los correos operativos (reporte diario por skill), el sistema envía 
 - Los templates viven en `apps/next/src/app/mails/templates/<partner>/<archivo>.html` (p. ej. `carrefour/welcome-essential.html`) y se cargan en runtime con `loadTemplateHtml(partner, templateFile)`.
 - Sus imágenes se referencian por **URL pública del bucket `mails`** (no como adjuntos), así el HTML queda autocontenido.
 - El consumidor actual es el adapter **MAWDY Mail** (ver [Orquestador e integraciones](./orquestador-integraciones.md)), que resuelve el template del evento/paquete e interpola las variables.
+- El **nombre del remitente** (`fromname`) y demás valores del envío salen del `mapping` de `integrations.config` (slug `MAWDY_MAIL`). El adapter combina `mapping` de canal → evento → paquete (el más específico gana), así que un `fromname` definido a nivel canal aplica a todos sus correos (bienvenida y cancelación) salvo que un evento o paquete lo sobrescriba. En Carrefour el remitente es **`Mapfre`**, definido a nivel canal; el valor se resuelve al momento del envío.
 
 ## Notificaciones en la app Next (Discord)
 
