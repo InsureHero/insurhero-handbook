@@ -61,6 +61,7 @@ Cada ambiente tiene su propio set de variables configurado en Vercel:
 | `SUPABASE_SERVICE_ROLE_KEY` | Key de DEV | Key de Sandbox | Key de Main |
 | `AUTH_SECRET` | Dev-only secret | Sandbox secret | Prod secret |
 | `QSTASH_TOKEN` | Dev token | Sandbox token | Prod token |
+| `QSTASH_CALLBACK_SECRET` | Dev secret | Sandbox secret | Prod secret |
 
 ### Supabase
 
