@@ -20,10 +20,13 @@ temp_carriers_orders  (status = pending)
    │  cron horario por canal (carrefour_dispatch)
    ▼
 POST /api/integrations/carrefour-payments/dispatch  ── consolida los pending del slug
+   │                                                   y registra la emisión PENDING
    ▼
 CarrefourAdapter (SFTP)  ── send / receive
+   │  directo: resultado inmediato
+   │  relay (use_relay): Lambda asíncrona ── QStash ──▶ POST /carrefour-payments/send-result
    ▼
-integration_emissions (SUCCESS/FAILED)  +  temp_carriers_orders (status = sent)
+integration_emissions (PENDING → SUCCESS/FAILED)  +  temp_carriers_orders (status = sent)
 ```
 
 ### 1. Generación (disparada por la orden)
@@ -56,11 +59,36 @@ El **`CarrefourAdapter`** (registrado bajo el slug `SFTP`) implementa dos operac
 - **`send`**: sube el fichero al `remote_path` del SFTP de Carrefour.
 - **`receive`**: baja ficheros de respuesta desde `remote_path_in` y los procesa.
 
-Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remote_path_in`) viven **por canal** en `auth_config`.
+Las credenciales SFTP (host, puerto, usuario, contraseña, `remote_path`, `remote_path_in`) viven **por canal** en `auth_config`. El flag **`use_relay`** de esa misma config decide cómo se hace el `send`:
+
+- **Directo** (`use_relay` ausente o `false`): el adapter descarga el fichero del bucket y lo sube por SFTP; el dispatch recibe el resultado en la misma llamada y cierra la emisión ahí mismo.
+- **Relay** (`use_relay = true`): el envío lo hace una **Lambda relay** externa (repo `insurehero-carrier-connect`). El adapter no le manda el contenido del fichero sino la **referencia `bucket` + `key`** (`CARREFOUR_BUCKET` / `CARREFOUR_SENT_PATH/<filename>`, donde el dispatch ya lo subió), junto con un **`callbackData`** que el orquestador y el adapter solo transportan. El dispatch **no espera** el resultado del envío: la Lambda lo publica en **QStash**, que lo reenvía al endpoint callback `send-result` (ver punto 5). La operación `receive` no cambia.
+
+`callbackData` lleva la URL del callback (`NEXT_PUBLIC_SITE_URL` + `/api/integrations/carrefour-payments/send-result`), `channel_id`, `slug`, `dateRange` (o `null`), `filename`, la decisión `markAsSent` ya resuelta y la traza del envío (`startedAt`, `integration`, `typefile`, `fileSizeBytes`, `carrier`, `sftpHost`, `sftpUser`, `remotePath`). La Lambda le agrega el resultado (`status`, `error`, `errorCode`, `connectionStartedAt`, `sendStartedAt`).
 
 ### 5. Registro del despacho
 
-Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `SUCCESS`/`FAILED`, `external_id` = nombre del fichero). Las filas despachadas con éxito pasan a `status = 'sent'` con su `sent_at`.
+Cada despacho se registra en **`integration_emissions`** (`provider = 'SFTP'`, `external_id` = nombre del fichero). Cuando se envía por SFTP, el ciclo de la fila es:
+
+1. **`PENDING`** — el dispatch la inserta **antes** de invocar el envío, congelando en `risk_item_data.order_ids` los IDs exactos de `temp_carriers_orders` que van en el fichero, más la traza del envío.
+2. **`SUCCESS` / `FAILED`** — la fila `PENDING` se **actualiza** (no se inserta otra):
+   - si la invocación al envío falla de entrada, el dispatch la pasa a `FAILED` con el error;
+   - en modo directo, el dispatch la pasa a `SUCCESS` con el `response_data`;
+   - en modo relay, la liquida el callback `send-result`.
+
+Solo se marcan como `status = 'sent'` (con su `sent_at`) las órdenes congeladas en la emisión, y solo si el envío fue `SUCCESS` **y** `markAsSent` es verdadero. Así, las órdenes que entran como `pending` entre el dispatch y el callback no se marcan y viajan en el fichero siguiente.
+
+Si `send_via_sftp` resuelve a `false` para ese despacho (en ese caso `markAsSent` también se fuerza a `false`), el fichero solo se deja en el bucket: la emisión se registra directamente como `SUCCESS` con `stagedOnly`, sin enviar ni marcar.
+
+#### Callback `send-result`
+
+`POST /api/integrations/carrefour-payments/send-result` recibe desde QStash el resultado del envío por relay:
+
+- **Auth**: compara el header `authorization` (Bearer) con **`QSTASH_CALLBACK_SECRET`**, un secreto dedicado distinto del service-role. Si no coincide, responde **401**.
+- Busca la emisión **`PENDING`** por `channel_id` + `provider = 'SFTP'` + `filename`. Si no hay ninguna (ya liquidada o nunca creada), responde `duplicate: true` sin procesar nada: una entrega duplicada de QStash es idempotente.
+- Con `SUCCESS` y `markAsSent`, marca como `sent` los `order_ids` congelados. Con `FAILED`, no marca y deja el error en `error_history` / `last_error`.
+- Actualiza la fila a `SUCCESS`/`FAILED` con `connection_started_at`, `send_started_at` y `marked_as_sent`.
+- Responde **siempre HTTP 200**, incluso ante body inválido o error de base de datos; el resultado va en el body (`ok`, `status`, `count`, `markedAsSent`) para que QStash no reintente y duplique el procesamiento.
 
 ## Configuración (`auth_config`)
 
@@ -75,13 +103,14 @@ La **periodicidad** de un report (`daily` / `monthly`, con `schedule_day` y `ski
 
 - Todo el pipeline está **scopeado por `channel_id`** (la tabla `temp_carriers_orders` lo lleva como FK).
 - El **timezone del canal** gobierna las ventanas de consolidación y las fechas de cierre.
-- Los endpoints de generación y despacho solo aceptan **service-role** (Bearer). `temp_carriers_orders` tiene RLS sin policies: solo el service-role escribe.
+- Los endpoints de generación y despacho solo aceptan **service-role** (Bearer). El callback `send-result` acepta solo **`QSTASH_CALLBACK_SECRET`**. `temp_carriers_orders` tiene RLS sin policies: solo el service-role escribe.
 
 ## Dónde está en el repo
 
 - Generación por orden: `apps/next/src/app/api/integrations/carrefour-payments/order/route.ts`
 - Consolidación y despacho: `apps/next/src/app/api/integrations/carrefour-payments/dispatch/route.ts`
-- Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/`
+- Callback de resultado del envío por relay: `apps/next/src/app/api/integrations/carrefour-payments/send-result/route.ts`
+- Adaptador SFTP: `apps/next/src/integrations/adapters/sftp/carrefour/` (cliente relay en `adapters/sftp/core/client/relay.ts` y `orchestrator/carrierConnectClient.ts`)
 - Builders por familia: `apps/next/src/integrations/carrefour-eiac/`, `carrefour-mic/`, y `carrefour-payments/ric.utils.ts`
 
 ## Referencias
